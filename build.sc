@@ -98,7 +98,7 @@ object native extends JavaModule with WindowsAnsiPublishModule {
   def artifactName = "native-terminal"
   def ivyDeps = Agg(
     ivy"io.github.alexarchambault:is-terminal:0.1.2",
-    ivy"org.fusesource.jansi:jansi:2.4.1"
+    ivy"org.jline:jline-native:3.29.0"
   )
 }
 

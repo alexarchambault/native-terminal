@@ -24,7 +24,7 @@ public final class NativeTerminal {
      * Gets the terminal size
      *
      * This uses an {@code ioctl} call on Linux / Mac, and a {@code kernel32.dll} method
-     * on Windows. Both are done via JNI, using libraries that ship with jansi.
+     * on Windows. Both are done via JNI, using libraries that ship with jline-native.
      *
      * @return the terminal size
      */
@@ -41,7 +41,7 @@ public final class NativeTerminal {
      * returns true in that case.
      *
      * Under-the-hood, this calls a {@code kernel32.dll} method, via JNI,
-     * using libraries that ship with jansi.
+     * using libraries that ship with jline-native.
      *
      * @throws IOException if anything goes wrong
      * @return Whether ANSI output is enabled

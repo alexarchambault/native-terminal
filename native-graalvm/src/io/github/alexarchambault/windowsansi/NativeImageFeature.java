@@ -52,21 +52,21 @@ final class NativeImageFeature implements Feature {
 
     /** List of the classes that access the JNI library. */
     private static final List<String> JNI_CLASS_NAMES = Arrays.asList(
-            "org.fusesource.jansi.internal.CLibrary",
-            "org.fusesource.jansi.internal.CLibrary$WinSize",
-            "org.fusesource.jansi.internal.CLibrary$Termios");
+            "org.jline.nativ.CLibrary",
+            "org.jline.nativ.CLibrary$WinSize",
+            "org.jline.nativ.CLibrary$Termios");
     private static final List<String> WINDOWS_JNI_CLASS_NAMES = Arrays.asList(
-            "org.fusesource.jansi.internal.Kernel32",
-            "org.fusesource.jansi.internal.Kernel32$SMALL_RECT",
-            "org.fusesource.jansi.internal.Kernel32$COORD",
-            "org.fusesource.jansi.internal.Kernel32$CONSOLE_SCREEN_BUFFER_INFO",
-            "org.fusesource.jansi.internal.Kernel32$CHAR_INFO",
-            "org.fusesource.jansi.internal.Kernel32$KEY_EVENT_RECORD",
-            "org.fusesource.jansi.internal.Kernel32$MOUSE_EVENT_RECORD",
-            "org.fusesource.jansi.internal.Kernel32$WINDOW_BUFFER_SIZE_RECORD",
-            "org.fusesource.jansi.internal.Kernel32$FOCUS_EVENT_RECORD",
-            "org.fusesource.jansi.internal.Kernel32$MENU_EVENT_RECORD",
-            "org.fusesource.jansi.internal.Kernel32$INPUT_RECORD");
+            "org.jline.nativ.Kernel32",
+            "org.jline.nativ.Kernel32$SMALL_RECT",
+            "org.jline.nativ.Kernel32$COORD",
+            "org.jline.nativ.Kernel32$CONSOLE_SCREEN_BUFFER_INFO",
+            "org.jline.nativ.Kernel32$CHAR_INFO",
+            "org.jline.nativ.Kernel32$KEY_EVENT_RECORD",
+            "org.jline.nativ.Kernel32$MOUSE_EVENT_RECORD",
+            "org.jline.nativ.Kernel32$WINDOW_BUFFER_SIZE_RECORD",
+            "org.jline.nativ.Kernel32$FOCUS_EVENT_RECORD",
+            "org.jline.nativ.Kernel32$MENU_EVENT_RECORD",
+            "org.jline.nativ.Kernel32$INPUT_RECORD");
 
     @Override
     public void beforeAnalysis(BeforeAnalysisAccess access) {
@@ -101,21 +101,20 @@ final class NativeImageFeature implements Feature {
             /* The native library that is included as a resource in the .jar file. */
             String resource = null;
             if (Platform.includedIn(Platform.WINDOWS_AMD64.class))
-                resource = "Windows/x86_64/jansi.dll";
+                resource = "Windows/x86_64/jlinenative.dll";
             else if (Platform.includedIn(Platform.WINDOWS_AARCH64.class))
-                // FIXME File name should be changed to jansi.dll in the upcoming jansi version
-                resource = "Windows/arm64/libjansi.so";
+                resource = "Windows/arm64/jlinenative.dll";
             else if (Platform.includedIn(Platform.LINUX_AMD64.class))
-                resource = "Linux/x86_64/libjansi.so";
+                resource = "Linux/x86_64/libjlinenative.so";
             else if (Platform.includedIn(Platform.LINUX_AARCH64.class))
-                resource = "Linux/arm64/libjansi.so";
+                resource = "Linux/arm64/libjlinenative.so";
             else if (Platform.includedIn(Platform.DARWIN_AMD64.class))
-                resource = "Mac/x86_64/libjansi.jnilib";
+                resource = "Mac/x86_64/libjlinenative.jnilib";
             else if (Platform.includedIn(Platform.DARWIN_AARCH64.class))
-                resource = "Mac/arm64/libjansi.jnilib";
+                resource = "Mac/arm64/libjlinenative.jnilib";
 
             if (resource != null) {
-                resource = "org/fusesource/jansi/internal/native/" + resource;
+                resource = "org/jline/nativ/" + resource;
                 InputStream is = jniClass.getClassLoader().getResourceAsStream(resource);
                 if (is == null)
                     throw new RuntimeException("Could not find resource " + resource);

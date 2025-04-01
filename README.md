@@ -7,7 +7,7 @@
 - query the terminal size, and
 - on Windows, change the console mode so that it accepts ANSI escape codes.
 
-It relies on internals of the [jansi](https://github.com/fusesource/jansi) library to do so, and also works from
+It relies on internals of the [jline-native](https://github.com/jline/jline3/tree/master/native) library to do so, and also works from
 GraalVM native images.
 
 Compared to using [jline](https://github.com/jline/jline3), *native-terminal* only and solely calls the right
