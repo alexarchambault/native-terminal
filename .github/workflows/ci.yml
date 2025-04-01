@@ -17,7 +17,7 @@ jobs:
           fetch-depth: 0
       - uses: coursier/setup-action@v1
         with:
-          jvm: "21"
+          jvm: "24"
       - run: ./mill __.publishLocal
 
   release:
@@ -29,7 +29,7 @@ jobs:
           fetch-depth: 0
       - uses: coursier/setup-action@v1
         with:
-          jvm: "21"
+          jvm: "24"
       - run: ./mill mill.scalalib.PublishModule/ --sonatypeUri https://s01.oss.sonatype.org/service/local --sonatypeSnapshotUri https://s01.oss.sonatype.org/content/repositories/snapshots
         env:
           MILL_PGP_SECRET_BASE64: ${{ secrets.PUBLISH_SECRET_KEY }}
