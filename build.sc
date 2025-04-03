@@ -124,6 +124,15 @@ object native extends JavaModule with WindowsAnsiPublishModule {
   }
 }
 
+object `native-no-ffm` extends JavaModule with WindowsAnsiPublishModule {
+  def artifactName = Task {
+    native.artifactName() + "-no-ffm"
+  }
+  def ivyDeps = native.ivyDeps
+
+  def sources = native.sources
+}
+
 object `native-graalvm` extends JavaModule with WindowsAnsiPublishModule {
   def moduleDeps = Seq(native)
   def artifactName = "native-terminal-graalvm"
