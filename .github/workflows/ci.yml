@@ -15,7 +15,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: coursier/setup-action@v1
+      - uses: coursier/setup-action@v2
         with:
           jvm: "24"
       - run: ./mill __.publishLocal
@@ -27,7 +27,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - uses: coursier/setup-action@v1
+      - uses: coursier/setup-action@v2
         with:
           jvm: "24"
       - run: ./mill mill.scalalib.PublishModule/ --sonatypeUri https://s01.oss.sonatype.org/service/local --sonatypeSnapshotUri https://s01.oss.sonatype.org/content/repositories/snapshots
