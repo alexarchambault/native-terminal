@@ -23,6 +23,17 @@ jobs:
   release:
     runs-on: ubuntu-latest
     if: github.event_name == 'push'
+    # Never publish to Sonatype Central from two jobs at a time. A job waits for the running one
+    # rather than cancelling it. GitHub keeps only one waiting job per group though, and cancels
+    # an older waiting one.
+    concurrency:
+      group: sonatype-central-publish-${{ github.repository }}
+      cancel-in-progress: false
+    permissions:
+      contents: read
+      packages: write
+    env:
+      PUBLISH_ARTIFACTS: __:PublishModule.publishArtifacts
     steps:
       - uses: actions/checkout@v7
         with:
@@ -30,9 +41,28 @@ jobs:
       - uses: coursier/setup-action@v3
         with:
           jvm: "24"
-      - run: ./mill mill.scalalib.PublishModule/ --sonatypeUri https://s01.oss.sonatype.org/service/local --sonatypeSnapshotUri https://s01.oss.sonatype.org/content/repositories/snapshots
+      - name: Publish to Sonatype Central
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/* ]]; then
+            ./mill -i mill.scalalib.SonatypeCentralPublishModule/ --bundleName "native-terminal-${GITHUB_REF#refs/tags/v}" --shouldRelease false
+          else
+            for tag in $(git tag --points-at HEAD); do
+              git tag -d "$tag"
+            done
+            ./mill -i mill.scalalib.SonatypeCentralPublishModule/
+          fi
         env:
           MILL_PGP_SECRET_BASE64: ${{ secrets.PUBLISH_SECRET_KEY }}
           MILL_PGP_PASSPHRASE: ${{ secrets.PUBLISH_SECRET_KEY_PASSWORD }}
           MILL_SONATYPE_USERNAME: ${{ secrets.PUBLISH_USER }}
           MILL_SONATYPE_PASSWORD: ${{ secrets.PUBLISH_PASSWORD }}
+      - name: Publish to GitHub Packages
+        continue-on-error: true
+        run: |
+          ./mill -i mill.javalib.MavenPublishModule/publishAll \
+            --publishArtifacts "$PUBLISH_ARTIFACTS" \
+            --releaseUri "https://maven.pkg.github.com/$GITHUB_REPOSITORY" \
+            --snapshotUri "https://maven.pkg.github.com/$GITHUB_REPOSITORY"
+        env:
+          MILL_MAVEN_USERNAME: ${{ github.actor }}
+          MILL_MAVEN_PASSWORD: ${{ secrets.GITHUB_TOKEN }}
