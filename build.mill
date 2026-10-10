@@ -1,15 +1,41 @@
-import $ivy.`de.tototec::de.tobiasroeser.mill.vcs.version::0.4.1`
-import $ivy.`com.github.lolgab::mill-mima::0.1.1`
+//| mill-version: 1.3.0
+//| mvnDeps:
+//| - com.github.lolgab::mill-mima_mill1:0.2.2
+//| - io.get-coursier:interface:1.0.29
 
 import com.github.lolgab.mill.mima.Mima
-import de.tobiasroeser.mill.vcs.version.VcsVersion
-import mill._
-import mill.scalalib._
-import mill.scalalib.publish._
+import mill.*
+import mill.api.BuildCtx
+import mill.javalib.*
+import mill.javalib.publish.*
 
 import java.util.Locale
 
 import scala.util.Properties
+
+object Versions {
+
+  /** The version to publish, from the 'v*' git tags.
+    *
+    * If HEAD has a 'v*' tag, the version is the value after its 'v'. Else, the version is the
+    * latest 'v*' tag value, cut to its first 3 elements, with the last one bumped, and a
+    * '-SNAPSHOT' suffix (e.g. 'v0.0.9.1' → '0.0.10-SNAPSHOT').
+    */
+  def publishVersion(): String = {
+    def git(args: String*): String =
+      os.proc("git", args).call(cwd = BuildCtx.workspaceRoot, check = false).out.trim()
+    git("tag", "--list", "v*", "--points-at", "HEAD").linesIterator.toList.headOption match {
+      case Some(tag) => tag.stripPrefix("v")
+      case None =>
+        val latest = git("describe", "--tags", "--abbrev=0", "--match", "v*").stripPrefix("v")
+        val elems  = latest.split('.').take(3)
+        elems.lastOption.flatMap(_.toIntOption) match {
+          case Some(last) => (elems.init :+ (last + 1).toString).mkString(".") + "-SNAPSHOT"
+          case None       => "0.0.1-SNAPSHOT"
+        }
+    }
+  }
+}
 
 trait WindowsAnsiPublishModule extends WindowsAnsiJavaModule with PublishModule with Mima {
   def pomSettings = PomSettings(
@@ -25,36 +51,29 @@ trait WindowsAnsiPublishModule extends WindowsAnsiJavaModule with PublishModule 
       Developer("alexarchambault", "Alex Archambault", "https://github.com/alexarchambault")
     )
   )
-  def publishVersion = T {
-    val value = VcsVersion.vcsState().format()
-    if (value.contains("-")) {
-      val value0 = value.takeWhile(_ != '-')
-      val lastDotIdx = value0.lastIndexOf('.')
-      if (lastDotIdx < 0) value0 + "-SNAPSHOT"
-      else
-        value0.drop(lastDotIdx + 1).toIntOption match {
-          case Some(lastNum) =>
-            val prefix = value0.take(lastDotIdx)
-            s"$prefix.${lastNum + 1}-SNAPSHOT"
-          case None =>
-            value0 + "-SNAPSHOT"
-        }
-    }
-    else value
+  def publishVersion = Task.Input {
+    Versions.publishVersion()
   }
 
-  def mimaPreviousVersions: T[Seq[String]] = T.input {
+  // Almost empty javadoc JARs, with only a manifest in them
+  def docJar = Task {
+    val jar = Task.dest / "out.jar"
+    mill.util.Jvm.createJar(jar, Seq.empty)
+    PathRef(jar)
+  }
+
+  def mimaPreviousVersions: T[Seq[String]] = Task.Input {
     val current = os.proc("git", "describe", "--tags", "--match", "v*")
-      .call()
+      .call(cwd = BuildCtx.workspaceRoot)
       .out.trim()
     os.proc("git", "tag", "-l")
-      .call()
+      .call(cwd = BuildCtx.workspaceRoot)
       .out.lines()
       .filter(_ != current)
       .filter(_.startsWith("v"))
       .filter(!_.contains("-"))
       .map(_.stripPrefix("v"))
-      .map(coursier.core.Version(_))
+      .map(coursier.version.Version(_))
       .sorted
       .map(_.repr)
   }
@@ -67,20 +86,20 @@ trait WindowsAnsiJavaModule extends JavaModule {
       case Some("aarch64" | "arm64") => true
       case _                         => false
     }
-  def javacSystemJvmId = T {
+  def javacSystemJvmId = Task {
     if (Properties.isMac && isArm64) s"zulu:${jvmRelease()}"
     else if (Properties.isWin && isArm64)
       if (jvmRelease() == "8") "https://github.com/adoptium/temurin8-binaries/releases/download/jdk8u442-b06/OpenJDK8U-jdk_x64_windows_hotspot_8u442b06.zip"
       else s"liberica:${jvmRelease()}"
     else s"adoptium:${jvmRelease()}"
   }
-  def javacSystemJvm = T.source {
-    val javaHome = os.Path(coursierapi.JvmManager.create().get(javacSystemJvmId()), os.pwd)
+  def javacSystemJvm = Task {
+    val javaHome = os.Path(coursierapi.JvmManager.create().get(javacSystemJvmId()))
     PathRef(javaHome, quick = true)
   }
   // adds options equivalent to --release ${jvmRelease()} + allowing access to unsupported JDK APIs
   // (no more straightforward options to achieve that AFAIK)
-  def maybeJdkReleaseJavacOpt = T {
+  def maybeJdkReleaseJavacOpt = Task {
     val javaHome   = javacSystemJvm().path
     val rtJar      = javaHome / "jre/lib/rt.jar"
     val hasModules = os.isDir(javaHome / "jmods")
@@ -91,30 +110,30 @@ trait WindowsAnsiJavaModule extends JavaModule {
     else
       Seq("-source", jvmRelease(), "-target", jvmRelease(), "-bootclasspath", rtJar.toString)
   }
-  def javacOptions = T {
+  def javacOptions = Task {
     super.javacOptions() ++ maybeJdkReleaseJavacOpt()
   }
 }
 
 object native extends JavaModule with WindowsAnsiPublishModule {
   def artifactName = "native-terminal"
-  def ivyDeps = Agg(
-    ivy"io.github.alexarchambault:is-terminal:0.1.2",
-    ivy"org.jline:jline-native:3.30.17"
+  def mvnDeps = Seq(
+    mvn"io.github.alexarchambault:is-terminal:0.1.2",
+    mvn"org.jline:jline-native:3.30.17"
   )
 
-  def jdk22ClassesResources = T {
-    val destDir = T.dest / "META-INF/versions/22"
+  def jdk22ClassesResources = Task {
+    val destDir = Task.dest / "META-INF/versions/22"
     os.makeDir.all(destDir)
     for (elem <- os.list(jdk22.compile().classes.path))
       os.copy(elem, destDir / elem.last)
-    PathRef(T.dest)
+    PathRef(Task.dest)
   }
 
-  def resources = T {
-    T.sources(Seq(PathRef(millSourcePath / "resources")) ++ Seq(jdk22ClassesResources()))
+  def resources = Task {
+    super.resources() ++ Seq(jdk22ClassesResources())
   }
-  def manifest = T {
+  def manifest = Task {
     super.manifest().add("Multi-Release" -> "true")
   }
 
@@ -128,7 +147,7 @@ object `native-no-ffm` extends JavaModule with WindowsAnsiPublishModule {
   def artifactName = Task {
     native.artifactName() + "-no-ffm"
   }
-  def ivyDeps = native.ivyDeps
+  def mvnDeps = native.mvnDeps
 
   def sources = native.sources
 }
@@ -139,13 +158,13 @@ object `native-graalvm` extends JavaModule with WindowsAnsiPublishModule {
   def pomSettings = super.pomSettings().copy(
     licenses = Seq(License.`GPL-2.0-with-classpath-exception`)
   )
-  def compileIvyDeps = Agg(
-    ivy"org.graalvm.nativeimage:svm:22.0.0.2"
+  def compileMvnDeps = Seq(
+    mvn"org.graalvm.nativeimage:svm:22.0.0.2"
   )
   def mimaPreviousVersions = {
-    val publishedSince = coursier.core.Version("0.0.4")
+    val publishedSince = coursier.version.Version("0.0.4")
     super.mimaPreviousVersions().dropWhile { v =>
-      coursier.core.Version(v) < publishedSince
+      coursier.version.Version(v) < publishedSince
     }
   }
 }
@@ -153,9 +172,9 @@ object `native-graalvm` extends JavaModule with WindowsAnsiPublishModule {
 object fallbacks extends JavaModule with WindowsAnsiPublishModule {
   def artifactName = "native-terminal-fallbacks"
   def mimaPreviousVersions = {
-    val publishedSince = coursier.core.Version("0.0.2")
+    val publishedSince = coursier.version.Version("0.0.2")
     super.mimaPreviousVersions().dropWhile { v =>
-      coursier.core.Version(v) < publishedSince
+      coursier.version.Version(v) < publishedSince
     }
   }
 }
