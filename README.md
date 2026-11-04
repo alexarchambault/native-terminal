@@ -68,6 +68,10 @@ A returned value of `false` means ANSI escape codes aren't supported by the Wind
 These are supposed to be supported by Windows 10 build 10586 (Nov. 2015) onwards.
 
 Calling this method is safe on other platforms. It simply returns true in that case.
+It also returns true without changing anything on Windows, if the current process isn't
+attached to a terminal (if its output is redirected for example).
+
+On Windows, it throws an `IOException` if the current console mode can't be read.
 
 ### Get terminal size
 
@@ -79,6 +83,11 @@ TerminalSize size = NativeTerminal.getSize();
 int width = size.getWidth();
 int height = size.getHeight();
 ```
+
+The size is queried for the standard output of the current process. If it isn't a terminal
+(if it's redirected to a file or a pipe for example), the native calls fail, and the returned size
+can be 0 × 0 rather than an exception being thrown. Check for a non-positive width or height if your
+application can run with its output redirected.
 
 If you call this method often, on Unix-es, you might want to use `TerminalSizeCache` instead.
 
