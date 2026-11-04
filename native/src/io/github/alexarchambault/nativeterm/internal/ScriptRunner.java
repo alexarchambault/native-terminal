@@ -99,7 +99,7 @@ public final class ScriptRunner {
         }
 
         int exitCode = proc.waitFor();
-        if (exitCode != 0) throw new IOException("tput failed");
+        if (exitCode != 0) throw new IOException("tput " + s + " failed (exit code: " + exitCode + ")");
         return Integer.parseInt(results.toString().trim());
     }
 
