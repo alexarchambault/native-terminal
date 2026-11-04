@@ -169,6 +169,24 @@ libraryDependencies += "io.github.alexarchambault.native-terminal" % "native-ter
 Note that, unlike the other modules, this module is only licensed under the GNU GPL version 2 license
 with the Classpath Exception (see [License](#license)).
 
+## Development
+
+*native-terminal* is built with [Mill](https://mill-build.org). The `./mill` launcher at the root
+of the repository downloads the right Mill version.
+
+Compile all modules and publish them locally (in `~/.ivy2/local`) with
+```text
+$ ./mill __.publishLocal
+```
+
+Check binary compatibility with the former releases with
+```text
+$ ./mill __.mimaReportBinaryIssues
+```
+
+The published version is computed from git tags. Pushing a `v*` tag (like `v0.0.10`) makes the CI
+publish that version to Maven Central. Pushes to `main` publish snapshots.
+
 ## License
 
 All files in this repository, except `NativeImageFeature.java`, can be used either under the
