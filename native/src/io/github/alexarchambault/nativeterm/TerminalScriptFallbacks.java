@@ -21,8 +21,9 @@ public final class TerminalScriptFallbacks {
      * <p>This runs {@code tput} via an external process on Linux / Mac, and runs
      * a PowerShell script that calls {@code kernel32.dll} methods on Windows
      *
-     * @throws InterruptedException if the PowerShell sub-process gets interrupted
-     * @throws IOException if anything goes wrong
+     * @throws InterruptedException if the {@code tput} or PowerShell sub-process gets interrupted
+     * @throws IOException if anything goes wrong (sub-process failure, unexpected output, etc.)
+     * @throws IllegalArgumentException if the current process isn't attached to a terminal
      * @return the terminal size
      */
     public static TerminalSize getSize() throws InterruptedException, IOException {
