@@ -16,14 +16,44 @@ Compared to using [jline](https://github.com/jline/jline3), *native-terminal* on
 or [`GetConsoleScreenBufferInfo`](https://docs.microsoft.com/en-us/windows/console/getconsolescreenbufferinfo), on Windows),
 lowering the odds of something going wrong when generating or using a GraalVM native image for example.
 
-## Usage
+## Installation
 
-Add to your `build.sbt`
+*native-terminal* requires Java 8 or later.
+
+sbt:
 ```scala
 libraryDependencies += "io.github.alexarchambault.native-terminal" % "native-terminal" % "0.0.9.1"
 ```
 
+Mill:
+```scala
+def mvnDeps = Seq(
+  mvn"io.github.alexarchambault.native-terminal:native-terminal:0.0.9.1"
+)
+```
+
+Scala CLI:
+```scala
+//> using dep io.github.alexarchambault.native-terminal:native-terminal:0.0.9.1
+```
+
+Gradle:
+```kotlin
+implementation("io.github.alexarchambault.native-terminal:native-terminal:0.0.9.1")
+```
+
+Maven:
+```xml
+<dependency>
+  <groupId>io.github.alexarchambault.native-terminal</groupId>
+  <artifactId>native-terminal</artifactId>
+  <version>0.0.9.1</version>
+</dependency>
+```
+
 The latest version is [![Maven Central](https://img.shields.io/maven-central/v/io.github.alexarchambault.native-terminal/native-terminal.svg)](https://central.sonatype.com/artifact/io.github.alexarchambault.native-terminal/native-terminal).
+
+## Usage
 
 ### Change terminal mode
 
