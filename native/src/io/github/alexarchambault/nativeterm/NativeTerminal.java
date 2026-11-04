@@ -23,16 +23,31 @@ public final class NativeTerminal {
     /**
      * Gets the terminal size
      *
-     * <p>This uses an {@code ioctl} call on Linux / Mac, and a {@code kernel32.dll} method
-     * on Windows. Both are done via JNI, using libraries that ship with jline-native.
+     * <p>On Linux / Mac, this uses an {@code ioctl(TIOCGWINSZ)} call on stdout. If stdout
+     * isn't a terminal (when it's piped or redirected, for example), this falls back to
+     * stderr. The {@code ioctl} call is done via the Foreign Function and Memory API on
+     * Java &gt;= 22, and via JNI, using libraries that ship with jline-native, on older
+     * Java versions.
      *
-     * @throws IOException if anything goes wrong
+     * <p>On Windows, this uses a {@code kernel32.dll} method.
+     *
+     * @throws IOException if anything goes wrong, or if neither stdout nor stderr
+     *                     are terminals on Linux / Mac
      * @return the terminal size
      */
     public static TerminalSize getSize() throws IOException {
         if (isWindows)
             return WindowsTerm.getSize();
-        return UnixTerm.getSize(true);
+        try {
+            return UnixTerm.getSize(true);
+        } catch (IOException stdoutEx) {
+            try {
+                return UnixTerm.getSize(false);
+            } catch (IOException stderrEx) {
+                stdoutEx.addSuppressed(stderrEx);
+                throw stdoutEx;
+            }
+        }
     }
 
     /**

@@ -16,6 +16,8 @@ import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
 import java.lang.foreign.MemoryLayout.PathElement;
 
+import java.io.IOException;
+
 import io.github.alexarchambault.nativeterm.TerminalSize;
 
 @SuppressWarnings("restricted")
@@ -49,8 +51,8 @@ class CLibrary {
 
         private final java.lang.foreign.MemorySegment seg;
 
-        winsize() {
-            seg = java.lang.foreign.Arena.ofAuto().allocate(LAYOUT);
+        winsize(Arena arena) {
+            seg = arena.allocate(LAYOUT);
         }
 
         java.lang.foreign.MemorySegment segment() {
@@ -66,57 +68,93 @@ class CLibrary {
         }
     }
 
-    static MethodHandle ioctl;
-    static MethodHandle isatty;
-    static MethodHandle tcsetattr;
-    static MethodHandle tcgetattr;
-    static MethodHandle ttyname_r;
+    // Initialized lazily, so that failures surface as IOException at call time,
+    // rather than as ExceptionInInitializerError / NoClassDefFoundError
+    private static final class Ioctl {
+        static final StructLayout CAPTURE_STATE_LAYOUT;
+        static final long ERRNO_OFFSET;
+        static final MethodHandle HANDLE;
+        static final Throwable INIT_ERROR;
 
-    static {
-        // methods
-        Linker linker = Linker.nativeLinker();
-        SymbolLookup lookup = SymbolLookup.loaderLookup().or(linker.defaultLookup());
-        // https://man7.org/linux/man-pages/man2/ioctl.2.html
-        ioctl = linker.downcallHandle(
-                lookup.find("ioctl").get(),
-                FunctionDescriptor.of(
-                        ValueLayout.JAVA_INT, ValueLayout.JAVA_INT, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS),
-                Linker.Option.firstVariadicArg(2));
-        // https://www.man7.org/linux/man-pages/man3/isatty.3.html
-        isatty = linker.downcallHandle(
-                lookup.find("isatty").get(), FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_INT));
-        // https://man7.org/linux/man-pages/man3/tcsetattr.3p.html
-        tcsetattr = linker.downcallHandle(
-                lookup.find("tcsetattr").get(),
-                FunctionDescriptor.of(
-                        ValueLayout.JAVA_INT, ValueLayout.JAVA_INT, ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
-        // https://man7.org/linux/man-pages/man3/tcgetattr.3p.html
-        tcgetattr = linker.downcallHandle(
-                lookup.find("tcgetattr").get(),
-                FunctionDescriptor.of(ValueLayout.JAVA_INT, ValueLayout.JAVA_INT, ValueLayout.ADDRESS));
-        // https://man7.org/linux/man-pages/man3/ttyname.3.html
-        ttyname_r = linker.downcallHandle(
-                lookup.find("ttyname_r").get(),
-                FunctionDescriptor.of(
-                        ValueLayout.JAVA_INT, ValueLayout.JAVA_INT, ValueLayout.ADDRESS, ValueLayout.JAVA_LONG));
+        static {
+            StructLayout captureStateLayout = null;
+            long errnoOffset = -1L;
+            MethodHandle handle = null;
+            Throwable initError = null;
+            try {
+                Linker linker = Linker.nativeLinker();
+                SymbolLookup lookup = SymbolLookup.loaderLookup().or(linker.defaultLookup());
+                captureStateLayout = Linker.Option.captureStateLayout();
+                errnoOffset = captureStateLayout.byteOffset(PathElement.groupElement("errno"));
+                // https://man7.org/linux/man-pages/man2/ioctl.2.html
+                MemorySegment ioctlAddr = lookup.find("ioctl")
+                        .orElseThrow(() -> new UnsatisfiedLinkError("ioctl symbol not found"));
+                handle = linker.downcallHandle(
+                        ioctlAddr,
+                        FunctionDescriptor.of(
+                                ValueLayout.JAVA_INT, ValueLayout.JAVA_INT, ValueLayout.JAVA_LONG, ValueLayout.ADDRESS),
+                        Linker.Option.firstVariadicArg(2),
+                        Linker.Option.captureCallState("errno"));
+            } catch (Throwable t) {
+                initError = t;
+                handle = null;
+            }
+            CAPTURE_STATE_LAYOUT = captureStateLayout;
+            ERRNO_OFFSET = errnoOffset;
+            HANDLE = handle;
+            INIT_ERROR = initError;
+        }
     }
 
-    static TerminalSize getTerminalSize(int fd) {
-        try {
-            winsize ws = new winsize();
-            int res = (int) ioctl.invoke(fd, (long) TIOCGWINSZ, ws.segment());
-            return TerminalSize.of(ws.ws_col(), ws.ws_row());
-        } catch (Throwable e) {
-            throw new RuntimeException("Unable to call ioctl(TIOCGWINSZ)", e);
+    static TerminalSize getTerminalSize(int fd) throws IOException {
+        if (TIOCGWINSZ == null)
+            throw new IOException(
+                    "Getting the terminal size via ioctl(TIOCGWINSZ) is not supported on " +
+                            System.getProperty("os.name") + " (TIOCGWINSZ value unknown)");
+        if (Ioctl.HANDLE == null)
+            throw new IOException("Unable to set up a downcall handle for ioctl", Ioctl.INIT_ERROR);
+
+        int res;
+        int errno;
+        int width;
+        int height;
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment callState = arena.allocate(Ioctl.CAPTURE_STATE_LAYOUT);
+            winsize ws = new winsize(arena);
+            try {
+                res = (int) Ioctl.HANDLE.invokeExact(callState, fd, (long) TIOCGWINSZ, ws.segment());
+            } catch (Throwable e) {
+                throw new IOException("Unable to call ioctl(TIOCGWINSZ)", e);
+            }
+            errno = callState.get(ValueLayout.JAVA_INT, Ioctl.ERRNO_OFFSET);
+            width = Short.toUnsignedInt(ws.ws_col());
+            height = Short.toUnsignedInt(ws.ws_row());
+        }
+
+        if (res != 0)
+            throw new IOException(
+                    "ioctl(TIOCGWINSZ) failed on file descriptor " + fd + " (errno " + errno + errnoDescription(errno) + ")");
+        if (width == 0 && height == 0)
+            throw new IOException("ioctl(TIOCGWINSZ) returned a 0x0 size on file descriptor " + fd);
+        return TerminalSize.of(width, height);
+    }
+
+    private static String errnoDescription(int errno) {
+        // These values are the same on Linux, macOS, FreeBSD and Solaris
+        switch (errno) {
+            case 9: return ", EBADF: bad file descriptor";
+            case 25: return ", ENOTTY: not a terminal";
+            default: return "";
         }
     }
 
     // CONSTANTS
 
-    private static final int TIOCGWINSZ;
+    // null on unsupported OSes
+    private static final Integer TIOCGWINSZ;
 
     static {
-        String osName = System.getProperty("os.name");
+        String osName = System.getProperty("os.name", "");
         if (osName.startsWith("Linux")) {
             String arch = System.getProperty("os.arch");
             boolean isMipsPpcOrSparc = arch.equals("mips")
@@ -134,7 +172,7 @@ class CLibrary {
         } else if (osName.startsWith("FreeBSD")) {
             TIOCGWINSZ = 0x40087468;
         } else {
-            throw new UnsupportedOperationException();
+            TIOCGWINSZ = null;
         }
     }
 }
