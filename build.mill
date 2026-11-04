@@ -187,6 +187,8 @@ object `native-graalvm` extends JavaModule with NativeTerminalPublishModule {
   )
 }
 
+// Empty legacy artifact (no sources), still published for compatibility with
+// projects that depend on it
 object fallbacks extends JavaModule with NativeTerminalPublishModule {
   def artifactName     = "native-terminal-fallbacks"
   def mimaFirstVersion = "0.0.7"
