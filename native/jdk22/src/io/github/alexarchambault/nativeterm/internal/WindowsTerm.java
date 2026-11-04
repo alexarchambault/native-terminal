@@ -3,6 +3,9 @@ package io.github.alexarchambault.nativeterm.internal;
 import io.github.alexarchambault.nativeterm.TerminalSize;
 
 import java.io.IOException;
+import java.lang.foreign.Arena;
+import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ValueLayout;
 
 /**
  * Utilities to interact with the terminal on Windows in a native fashion
@@ -25,10 +28,11 @@ public final class WindowsTerm {
      * @throws IOException if anything goes wrong
      */
     public static TerminalSize getSize() throws IOException {
-        try (java.lang.foreign.Arena arena = java.lang.foreign.Arena.ofConfined()) {
-            java.lang.foreign.MemorySegment console = Kernel32.GetStdHandle(Kernel32.STD_OUTPUT_HANDLE);
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment callState = Kernel32.allocateCallState(arena);
+            MemorySegment console = Kernel32.GetStdHandle(Kernel32.STD_OUTPUT_HANDLE);
             Kernel32.CONSOLE_SCREEN_BUFFER_INFO info = new Kernel32.CONSOLE_SCREEN_BUFFER_INFO();
-            Kernel32.GetConsoleScreenBufferInfo(console, info);
+            Kernel32.GetConsoleScreenBufferInfo(callState, console, info);
             return TerminalSize.of(info.windowWidth(), info.windowHeight());
         }
     }
@@ -43,13 +47,14 @@ public final class WindowsTerm {
         // from https://github.com/jline/jline3/blob/0660ae29f3af2ca3b56cdeca1530072306988e4d/terminal/src/main/java/org/jline/terminal/impl/AbstractWindowsTerminal.java#L53
         final int ENABLE_VIRTUAL_TERMINAL_PROCESSING = 0x0004;
 
-        try (java.lang.foreign.Arena arena = java.lang.foreign.Arena.ofConfined()) {
-            java.lang.foreign.MemorySegment console = Kernel32.GetStdHandle(Kernel32.STD_OUTPUT_HANDLE);
-            java.lang.foreign.MemorySegment mode = arena.allocate(java.lang.foreign.ValueLayout.JAVA_INT);
-            if (Kernel32.GetConsoleMode(console, mode) == 0)
-                throw new IOException("Failed to get console mode: " + Kernel32.getLastErrorMessage());
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment callState = Kernel32.allocateCallState(arena);
+            MemorySegment console = Kernel32.GetStdHandle(Kernel32.STD_OUTPUT_HANDLE);
+            MemorySegment mode = arena.allocate(ValueLayout.JAVA_INT);
+            if (Kernel32.GetConsoleMode(callState, console, mode) == 0)
+                throw new IOException("Failed to get console mode: " + Kernel32.lastErrorMessage(callState));
             // FIXME Check if ENABLE_VIRTUAL_TERMINAL_PROCESSING is already set in mode[0] ??
-            return Kernel32.SetConsoleMode(console, mode.get(java.lang.foreign.ValueLayout.JAVA_INT, 0) | ENABLE_VIRTUAL_TERMINAL_PROCESSING) != 0;
+            return Kernel32.SetConsoleMode(callState, console, mode.get(ValueLayout.JAVA_INT, 0) | ENABLE_VIRTUAL_TERMINAL_PROCESSING) != 0;
         }
     }
 

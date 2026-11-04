@@ -11,6 +11,7 @@
 package io.github.alexarchambault.nativeterm.internal;
 
 import java.lang.foreign.Arena;
+import java.lang.foreign.Linker;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
 import java.lang.foreign.ValueLayout;
@@ -63,47 +64,59 @@ final class Kernel32 {
         }
     }
 
-    static int SetConsoleMode(java.lang.foreign.MemorySegment hConsoleHandle, int dwMode) {
+    // The functions below take a leading callState argument, allocated with allocateCallState,
+    // where the value of GetLastError right after the call gets captured. Read it with lastError.
+
+    static int SetConsoleMode(
+            MemorySegment callState, java.lang.foreign.MemorySegment hConsoleHandle, int dwMode) {
         MethodHandle mh$ = requireNonNull(SetConsoleMode$MH, "SetConsoleMode");
         try {
-            return (int) mh$.invokeExact(hConsoleHandle, dwMode);
+            return (int) mh$.invokeExact(callState, hConsoleHandle, dwMode);
         } catch (Throwable ex$) {
             throw new AssertionError("should not reach here", ex$);
         }
     }
 
     static int GetConsoleMode(
-            java.lang.foreign.MemorySegment hConsoleHandle, java.lang.foreign.MemorySegment lpMode) {
+            MemorySegment callState,
+            java.lang.foreign.MemorySegment hConsoleHandle,
+            java.lang.foreign.MemorySegment lpMode) {
         MethodHandle mh$ = requireNonNull(GetConsoleMode$MH, "GetConsoleMode");
         try {
-            return (int) mh$.invokeExact(hConsoleHandle, lpMode);
+            return (int) mh$.invokeExact(callState, hConsoleHandle, lpMode);
         } catch (Throwable ex$) {
             throw new AssertionError("should not reach here", ex$);
         }
     }
 
     static int GetConsoleScreenBufferInfo(
-            MemorySegment hConsoleOutput, CONSOLE_SCREEN_BUFFER_INFO lpConsoleScreenBufferInfo) {
+            MemorySegment callState,
+            MemorySegment hConsoleOutput,
+            CONSOLE_SCREEN_BUFFER_INFO lpConsoleScreenBufferInfo) {
         MethodHandle mh$ = requireNonNull(GetConsoleScreenBufferInfo$MH, "GetConsoleScreenBufferInfo");
         try {
-            return (int) mh$.invokeExact(hConsoleOutput, lpConsoleScreenBufferInfo.seg);
+            return (int) mh$.invokeExact(callState, hConsoleOutput, lpConsoleScreenBufferInfo.seg);
         } catch (Throwable ex$) {
             throw new AssertionError("should not reach here", ex$);
         }
     }
 
-    static int GetLastError() {
-        MethodHandle mh$ = requireNonNull(GetLastError$MH, "GetLastError");
-        try {
-            return (int) mh$.invokeExact();
-        } catch (Throwable ex$) {
-            throw new AssertionError("should not reach here", ex$);
-        }
+    // Calling GetLastError via its own downcall isn't reliable: the JVM may call Windows APIs that
+    // overwrite the last error in between. So we capture it via Linker.Option.captureCallState instead.
+    private static final Linker.Option CAPTURE_LAST_ERROR = Linker.Option.captureCallState("GetLastError");
+    private static final java.lang.foreign.StructLayout CAPTURE_STATE_LAYOUT = Linker.Option.captureStateLayout();
+    private static final VarHandle GetLastError$VH = varHandle(CAPTURE_STATE_LAYOUT, "GetLastError");
+
+    static MemorySegment allocateCallState(Arena arena) {
+        return arena.allocate(CAPTURE_STATE_LAYOUT);
     }
 
-    static String getLastErrorMessage() {
-        int errorCode = GetLastError();
-        return getErrorMessage(errorCode);
+    static int lastError(MemorySegment callState) {
+        return (int) GetLastError$VH.get(callState);
+    }
+
+    static String lastErrorMessage(MemorySegment callState) {
+        return getErrorMessage(lastError(callState));
     }
 
     static String getErrorMessage(int errorCode) {
@@ -126,10 +139,11 @@ final class Kernel32 {
         SYMBOL_LOOKUP = java.lang.foreign.SymbolLookup.loaderLookup();
     }
 
-    static MethodHandle downcallHandle(String name, java.lang.foreign.FunctionDescriptor fdesc) {
+    static MethodHandle downcallHandle(
+            String name, java.lang.foreign.FunctionDescriptor fdesc, Linker.Option... options) {
         return SYMBOL_LOOKUP
                 .find(name)
-                .map(addr -> java.lang.foreign.Linker.nativeLinker().downcallHandle(addr, fdesc))
+                .map(addr -> Linker.nativeLinker().downcallHandle(addr, fdesc, options))
                 .orElse(null);
     }
 
@@ -152,17 +166,18 @@ final class Kernel32 {
                     C_INT$LAYOUT,
                     C_POINTER$LAYOUT));
     static final MethodHandle SetConsoleMode$MH = downcallHandle(
-            "SetConsoleMode", java.lang.foreign.FunctionDescriptor.of(C_INT$LAYOUT, C_POINTER$LAYOUT, C_INT$LAYOUT));
+            "SetConsoleMode",
+            java.lang.foreign.FunctionDescriptor.of(C_INT$LAYOUT, C_POINTER$LAYOUT, C_INT$LAYOUT),
+            CAPTURE_LAST_ERROR);
     static final MethodHandle GetConsoleMode$MH = downcallHandle(
             "GetConsoleMode",
-            java.lang.foreign.FunctionDescriptor.of(C_INT$LAYOUT, C_POINTER$LAYOUT, C_POINTER$LAYOUT));
+            java.lang.foreign.FunctionDescriptor.of(C_INT$LAYOUT, C_POINTER$LAYOUT, C_POINTER$LAYOUT),
+            CAPTURE_LAST_ERROR);
 
     static final MethodHandle GetConsoleScreenBufferInfo$MH = downcallHandle(
             "GetConsoleScreenBufferInfo",
-            java.lang.foreign.FunctionDescriptor.of(C_INT$LAYOUT, C_POINTER$LAYOUT, C_POINTER$LAYOUT));
-
-    static final MethodHandle GetLastError$MH =
-            downcallHandle("GetLastError", java.lang.foreign.FunctionDescriptor.of(C_INT$LAYOUT));
+            java.lang.foreign.FunctionDescriptor.of(C_INT$LAYOUT, C_POINTER$LAYOUT, C_POINTER$LAYOUT),
+            CAPTURE_LAST_ERROR);
 
     static final class CONSOLE_SCREEN_BUFFER_INFO {
         static final java.lang.foreign.GroupLayout LAYOUT = java.lang.foreign.MemoryLayout.structLayout(
