@@ -4,8 +4,6 @@ import io.github.alexarchambault.nativeterm.TerminalSize;
 import org.jline.nativ.Kernel32;
 
 import java.io.IOException;
-import java.net.URL;
-import java.util.Locale;
 
 /**
  * Utilities to interact with the terminal on Windows in a native fashion

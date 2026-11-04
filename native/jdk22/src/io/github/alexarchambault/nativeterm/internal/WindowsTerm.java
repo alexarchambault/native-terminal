@@ -3,8 +3,6 @@ package io.github.alexarchambault.nativeterm.internal;
 import io.github.alexarchambault.nativeterm.TerminalSize;
 
 import java.io.IOException;
-import java.net.URL;
-import java.util.Locale;
 
 /**
  * Utilities to interact with the terminal on Windows in a native fashion
