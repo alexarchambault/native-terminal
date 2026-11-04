@@ -115,7 +115,7 @@ final class Kernel32 {
                 return "Error code " + errorCode;
             len = Math.min(len, bufferSize);
             byte[] bytes = data.asSlice(0, 2L * len).toArray(ValueLayout.JAVA_BYTE);
-            return new String(bytes, StandardCharsets.UTF_16LE).trim();
+            return new String(bytes, StandardCharsets.UTF_16LE).trim() + " (error code " + errorCode + ")";
         }
     }
 
