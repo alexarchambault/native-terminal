@@ -195,6 +195,23 @@ Check binary compatibility with the former releases with
 $ ./mill __.mimaReportBinaryIssues
 ```
 
+Run the tests with
+```text
+$ ./mill __.test
+```
+
+These run on the JVM Mill runs on by default. Set `NATIVE_TERMINAL_TEST_JVM` to a
+[coursier JVM id](https://get-coursier.io/docs/cli-java) or a Java home path to run them on another
+JVM, like
+```text
+$ NATIVE_TERMINAL_TEST_JVM=zulu:11 ./mill __.test
+```
+
+Mill's test runner requires Java 11 or later. To run the tests on Java 8, use
+```text
+$ ./mill native.test.consoleTest --jvm zulu:8
+```
+
 The published version is computed from git tags. Pushing a `v*` tag (like `v0.0.10`) makes the CI
 publish that version to Maven Central. Pushes to `main` publish snapshots.
 
