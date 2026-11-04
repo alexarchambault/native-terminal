@@ -1,7 +1,7 @@
 # native-terminal
 
-[![Build status](https://github.com/alexarchambault/native-terminal/workflows/CI/badge.svg)](https://github.com/alexarchambault/native-terminal/actions?query=workflow%3ACI)
-[![Maven Central](https://img.shields.io/maven-central/v/io.github.alexarchambault.native-terminal/native-terminal.svg)](https://maven-badges.herokuapp.com/maven-central/io.github.alexarchambault.native-terminal/native-terminal)
+[![Build status](https://github.com/alexarchambault/native-terminal/actions/workflows/ci.yml/badge.svg)](https://github.com/alexarchambault/native-terminal/actions/workflows/ci.yml)
+[![Maven Central](https://img.shields.io/maven-central/v/io.github.alexarchambault.native-terminal/native-terminal.svg)](https://central.sonatype.com/artifact/io.github.alexarchambault.native-terminal/native-terminal)
 
 *native-terminal* is a small Java library to setup / interact with terminals in a native fashion. It allows to
 - query the terminal size, and
@@ -23,7 +23,7 @@ Add to your `build.sbt`
 libraryDependencies += "io.github.alexarchambault.native-terminal" % "native-terminal" % "0.0.9.1"
 ```
 
-The latest version is [![Maven Central](https://img.shields.io/maven-central/v/io.github.alexarchambault.native-terminal/native-terminal.svg)](https://maven-badges.herokuapp.com/maven-central/io.github.alexarchambault.native-terminal/native-terminal).
+The latest version is [![Maven Central](https://img.shields.io/maven-central/v/io.github.alexarchambault.native-terminal/native-terminal.svg)](https://central.sonatype.com/artifact/io.github.alexarchambault.native-terminal/native-terminal).
 
 ### Change terminal mode
 
