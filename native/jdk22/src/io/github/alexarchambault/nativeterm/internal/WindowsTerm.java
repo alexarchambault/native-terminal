@@ -31,7 +31,7 @@ public final class WindowsTerm {
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment callState = Kernel32.allocateCallState(arena);
             MemorySegment console = Kernel32.GetStdHandle(Kernel32.STD_OUTPUT_HANDLE);
-            Kernel32.CONSOLE_SCREEN_BUFFER_INFO info = new Kernel32.CONSOLE_SCREEN_BUFFER_INFO();
+            Kernel32.CONSOLE_SCREEN_BUFFER_INFO info = new Kernel32.CONSOLE_SCREEN_BUFFER_INFO(arena);
             Kernel32.GetConsoleScreenBufferInfo(callState, console, info);
             return TerminalSize.of(info.windowWidth(), info.windowHeight());
         }
