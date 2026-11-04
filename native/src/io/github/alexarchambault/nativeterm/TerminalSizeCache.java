@@ -30,7 +30,7 @@ public final class TerminalSizeCache {
         );
     }
 
-    private TerminalSize terminalSize = null;
+    private volatile TerminalSize terminalSize = null;
 
     /**
      * Get the terminal size
