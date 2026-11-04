@@ -11,7 +11,7 @@ public final class WindowsTermScripts {
     /**
      * Script to enable ANSI output
      */
-    public static String enableAnsiScript =
+    public static final String enableAnsiScript =
             "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8\n" +
             "$signature = @'\n" +
             "[DllImport(\"kernel32.dll\", SetLastError = true)]\n" +
@@ -49,7 +49,7 @@ public final class WindowsTermScripts {
     /**
      * Script to get the terminal size
      */
-    public static String getConsoleDimScript =
+    public static final String getConsoleDimScript =
             "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8\n" +
             "$signature = @\"\n" +
             "using System;\n" +
