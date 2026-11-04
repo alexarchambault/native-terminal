@@ -46,7 +46,8 @@ public final class WindowsTerm {
         int[] mode = new int[1];
         if (Kernel32.GetConsoleMode(console, mode) == 0)
             throw new IOException("Failed to get console mode: " + Kernel32.getLastErrorMessage());
-        // FIXME Check if ENABLE_VIRTUAL_TERMINAL_PROCESSING is already set in mode[0] ??
+        if ((mode[0] & ENABLE_VIRTUAL_TERMINAL_PROCESSING) != 0)
+            return true;
         return Kernel32.SetConsoleMode(console, mode[0] | ENABLE_VIRTUAL_TERMINAL_PROCESSING) != 0;
     }
 

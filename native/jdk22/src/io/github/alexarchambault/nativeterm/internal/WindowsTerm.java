@@ -53,8 +53,10 @@ public final class WindowsTerm {
             MemorySegment mode = arena.allocate(ValueLayout.JAVA_INT);
             if (Kernel32.GetConsoleMode(callState, console, mode) == 0)
                 throw new IOException("Failed to get console mode: " + Kernel32.lastErrorMessage(callState));
-            // FIXME Check if ENABLE_VIRTUAL_TERMINAL_PROCESSING is already set in mode[0] ??
-            return Kernel32.SetConsoleMode(callState, console, mode.get(ValueLayout.JAVA_INT, 0) | ENABLE_VIRTUAL_TERMINAL_PROCESSING) != 0;
+            int currentMode = mode.get(ValueLayout.JAVA_INT, 0);
+            if ((currentMode & ENABLE_VIRTUAL_TERMINAL_PROCESSING) != 0)
+                return true;
+            return Kernel32.SetConsoleMode(callState, console, currentMode | ENABLE_VIRTUAL_TERMINAL_PROCESSING) != 0;
         }
     }
 
