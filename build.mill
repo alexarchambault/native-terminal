@@ -121,7 +121,8 @@ object native extends JavaModule with NativeTerminalPublishModule {
   def artifactName = "native-terminal"
   def mvnDeps = Seq(
     mvn"io.github.alexarchambault:is-terminal:0.1.2",
-    mvn"org.jline:jline-native:4.4.8"
+    // jline-native 4.x requires Java 11 (see .scala-steward.conf)
+    mvn"org.jline:jline-native:3.30.17"
   )
 
   def jdk22ClassesResources = Task {
