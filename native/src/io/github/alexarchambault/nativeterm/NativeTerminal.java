@@ -23,9 +23,10 @@ public final class NativeTerminal {
     /**
      * Gets the terminal size
      *
-     * This uses an {@code ioctl} call on Linux / Mac, and a {@code kernel32.dll} method
+     * <p>This uses an {@code ioctl} call on Linux / Mac, and a {@code kernel32.dll} method
      * on Windows. Both are done via JNI, using libraries that ship with jline-native.
      *
+     * @throws IOException if anything goes wrong
      * @return the terminal size
      */
     public static TerminalSize getSize() throws IOException {
@@ -37,10 +38,10 @@ public final class NativeTerminal {
     /**
      * Enables ANSI terminal output (only needed on Windows)
      *
-     * It is safe to call this method on non-Windows systems. It simply
+     * <p>It is safe to call this method on non-Windows systems. It simply
      * returns true in that case.
      *
-     * Under-the-hood, this calls a {@code kernel32.dll} method, via JNI,
+     * <p>Under-the-hood, this calls a {@code kernel32.dll} method, via JNI,
      * using libraries that ship with jline-native.
      *
      * @throws IOException if anything goes wrong

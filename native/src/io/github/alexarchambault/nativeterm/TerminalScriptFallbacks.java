@@ -18,7 +18,7 @@ public final class TerminalScriptFallbacks {
     /**
      * Gets the terminal size
      *
-     * This runs {@code tput} via an external process on Linux / Mac, and runs
+     * <p>This runs {@code tput} via an external process on Linux / Mac, and runs
      * a PowerShell script that calls {@code kernel32.dll} methods on Windows
      *
      * @throws InterruptedException if the PowerShell sub-process gets interrupted
@@ -49,10 +49,10 @@ public final class TerminalScriptFallbacks {
     /**
      * Enables ANSI terminal output (only needed on Windows)
      *
-     * It is safe to call this method on non-Windows systems. It simply
+     * <p>It is safe to call this method on non-Windows systems. It simply
      * returns true in that case.
      *
-     * Under-the-hood, this calls a {@code kernel32.dll} method, via a PowerShell script,
+     * <p>Under-the-hood, this calls a {@code kernel32.dll} method, via a PowerShell script,
      * run in an external process.
      *
      * @throws IOException if anything goes wrong
