@@ -3,18 +3,19 @@
 [![Build status](https://github.com/alexarchambault/native-terminal/actions/workflows/ci.yml/badge.svg)](https://github.com/alexarchambault/native-terminal/actions/workflows/ci.yml)
 [![Maven Central](https://img.shields.io/maven-central/v/io.github.alexarchambault.native-terminal/native-terminal.svg)](https://central.sonatype.com/artifact/io.github.alexarchambault.native-terminal/native-terminal)
 
-*native-terminal* is a small Java library to setup / interact with terminals in a native fashion. It allows to
+*native-terminal* is a small Java library to set up and interact with terminals in a native fashion. It lets you
 - query the terminal size, and
 - on Windows, change the console mode so that it accepts ANSI escape codes.
 
-It relies on internals of the [jline-native](https://github.com/jline/jline3/tree/master/native) library to do so, and also works from
-GraalVM native images.
+Unlike [JLine](https://github.com/jline/jline3), which sets up a whole terminal abstraction,
+*native-terminal* only makes the few system calls needed for that: `ioctl` on Linux / macOS, and
+`kernel32.dll` functions like [`SetConsoleMode`](https://learn.microsoft.com/en-us/windows/console/setconsolemode)
+or [`GetConsoleScreenBufferInfo`](https://learn.microsoft.com/en-us/windows/console/getconsolescreenbufferinfo)
+on Windows. This lowers the odds of something going wrong, when generating or using a GraalVM native image for example.
 
-Compared to using [jline](https://github.com/jline/jline3), *native-terminal* only and solely calls the right
-`ioctl` system calls
-(or `kernel32.dll` system calls, like [`SetConsoleMode`](https://docs.microsoft.com/en-us/windows/console/setconsolemode)
-or [`GetConsoleScreenBufferInfo`](https://docs.microsoft.com/en-us/windows/console/getconsolescreenbufferinfo), on Windows),
-lowering the odds of something going wrong when generating or using a GraalVM native image for example.
+It relies on internals of the [jline-native](https://github.com/jline/jline3/tree/master/native) library
+to make these calls (or on the [FFM API](#jdk-22-and-later) on JDK 22 and later), and also works from
+GraalVM native images.
 
 ## Installation
 
@@ -89,7 +90,7 @@ The size is queried for the standard output of the current process. If it isn't 
 can be 0 × 0 rather than an exception being thrown. Check for a non-positive width or height if your
 application can run with its output redirected.
 
-If you call this method often, on Unix-es, you might want to use `TerminalSizeCache` instead.
+If you call this method often, on Linux / macOS, you might want to use `TerminalSizeCache` instead.
 
 ```java
 import io.github.alexarchambault.nativeterm.TerminalSize;
@@ -103,7 +104,7 @@ int width = size.getWidth();
 int height = size.getHeight();
 ```
 
-On Unix-es, creating a `TerminalSizeCache` registers a handler for the WINCH signal, that invalidates
+On Linux / macOS, creating a `TerminalSizeCache` registers a handler for the WINCH signal, that invalidates
 the cached terminal size. That way, the terminal size is queried only when the terminal size
 changes, or if it's not cached yet (or the cached value has been invalidated).
 If the terminal size didn't change, the cached value is returned, and no unnecessary system call
