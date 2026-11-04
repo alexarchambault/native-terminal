@@ -22,6 +22,7 @@ import java.nio.charset.StandardCharsets;
 @SuppressWarnings({"restricted"})
 final class Kernel32 {
 
+    static final int FORMAT_MESSAGE_IGNORE_INSERTS = 0x00000200;
     static final int FORMAT_MESSAGE_FROM_SYSTEM = 0x00001000;
 
     static final long INVALID_HANDLE_VALUE = -1;
@@ -50,7 +51,7 @@ final class Kernel32 {
         MethodHandle mh$ = requireNonNull(FormatMessageW$MH, "FormatMessageW");
         try {
             return (int) mh$.invokeExact(
-                    Kernel32.FORMAT_MESSAGE_FROM_SYSTEM,
+                    Kernel32.FORMAT_MESSAGE_FROM_SYSTEM | Kernel32.FORMAT_MESSAGE_IGNORE_INSERTS,
                     MemorySegment.NULL,
                     dwMessageId,
                     0,
