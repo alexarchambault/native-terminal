@@ -168,19 +168,56 @@ object native extends JavaModule with NativeTerminalPublishModule {
     def javaHome = Task {
       testJvm() match {
         case Some(id) =>
-          val asPath = scala.util.Try(os.Path(id, BuildCtx.workspaceRoot)).toOption
-            .filter(os.isDir(_))
-          val path = asPath.getOrElse {
-            mill.util.Jvm.resolveJavaHome(
-              id = id,
-              ctx = Some(Task.ctx()),
-              coursierCacheCustomizer = coursierCacheCustomizer()
-            ).get
-          }
+          val path = resolveJvm(id, Task.ctx(), coursierCacheCustomizer())
           Some(PathRef(path, quick = true))
         case None =>
           super.javaHome()
       }
+    }
+
+    /** Java home of a JVM, from a coursier JVM id (e.g. 'zulu:11') or a Java home path */
+    private def resolveJvm(
+        id: String,
+        ctx: mill.api.TaskCtx,
+        coursierCacheCustomizer: Option[coursier.cache.FileCache[coursier.util.Task] => coursier.cache.FileCache[coursier.util.Task]]
+    ): os.Path = {
+      val asPath = scala.util.Try(os.Path(id, BuildCtx.workspaceRoot)).toOption
+        .filter(os.isDir(_))
+      asPath.getOrElse {
+        mill.util.Jvm.resolveJavaHome(
+          id = id,
+          ctx = Some(ctx),
+          coursierCacheCustomizer = coursierCacheCustomizer
+        ).get
+      }
+    }
+
+    /** Runs the tests with the JUnit console launcher, on the JVM with the passed id or path
+      * (see testJvm).
+      *
+      * Unlike 'test', this works on Java 8, which Mill's test runner doesn't support. The tests
+      * are compiled with the JVM Mill runs on (or the one of NATIVE_TERMINAL_TEST_JVM, if set).
+      */
+    def consoleTest(jvm: String) = Task.Command {
+      val javaHome = resolveJvm(jvm, Task.ctx(), coursierCacheCustomizer())
+      // JUnit Platform 1.x versions go along JUnit Jupiter 5.x ones
+      val platformVersion = "1." + jupiterVersion().stripPrefix("5.")
+      val console = defaultResolver().classpath(
+        Seq(mvn"org.junit.platform:junit-platform-console:$platformVersion")
+      )
+      val classPath = (runClasspath() ++ console).map(_.path).distinct
+      os.proc(
+        javaHome / "bin/java",
+        "-cp",
+        classPath.mkString(java.io.File.pathSeparator),
+        "org.junit.platform.console.ConsoleLauncher",
+        "execute",
+        "--disable-banner",
+        "--fail-if-no-tests",
+        "--scan-class-path",
+        compile().classes.path.toString
+      ).call(stdin = os.Inherit, stdout = os.Inherit, stderr = os.Inherit)
+      ()
     }
 
     // Run the tests against the native-terminal JAR rather than its class directory, so that
