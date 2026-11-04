@@ -5,7 +5,7 @@
 //| - com.github.lolgab::mill-mima_mill1:0.2.2
 //| - io.get-coursier:interface:1.0.29
 
-import com.github.lolgab.mill.mima.Mima
+import com.github.lolgab.mill.mima.{Mima, ProblemFilter}
 import mill.*
 import mill.api.BuildCtx
 import mill.javalib.*
@@ -175,6 +175,14 @@ object `native-graalvm` extends JavaModule with NativeTerminalPublishModule {
   )
   def compileMvnDeps = Seq(
     mvn"org.graalvm.nativeimage:svm:22.0.0.2"
+  )
+  def mimaBinaryIssueFilters = super.mimaBinaryIssueFilters() ++ Seq(
+    // NativeImageFeature (package private) and Placeholder (only there for javadoc) were removed:
+    // jline-native now ships its own native-image config (in META-INF/native-image/org.jline/jline-native),
+    // which makes NativeImageFeature redundant
+    ProblemFilter.exclude[com.github.lolgab.mill.mima.MissingClassProblem](
+      "io.github.alexarchambault.windowsansi.Placeholder"
+    )
   )
 }
 

@@ -200,11 +200,8 @@ publish that version to Maven Central. Pushes to `main` publish snapshots.
 
 ## License
 
-All files in this repository, except `NativeImageFeature.java`, can be used either under the
-Apache 2.0 license, or the GNU GPL version 2 license with the Classpath Exception, at your convenience.
-
-The `NativeImageFeature.java` file, originally based on a GNU GPL version 2 only file (with the
-Classpath Exception), is licensed only under the GNU GPL version 2 license with the Classpath Exception.
+All files in this repository can be used either under the Apache 2.0 license, or the GNU GPL
+version 2 license with the Classpath Exception, at your convenience.
 
 See [LICENSE](LICENSE) for the full terms.
 
