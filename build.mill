@@ -158,6 +158,31 @@ object native extends JavaModule with NativeTerminalPublishModule {
   object test extends JavaTests with TestModule.Junit5 {
     def jupiterVersion = "5.14.4"
 
+    /** JVM to run the tests with, as a coursier JVM id (e.g. 'zulu:11') or a Java home path.
+      *
+      * Defaults to the JVM Mill runs on.
+      */
+    def testJvm = Task.Input {
+      Task.env.get("NATIVE_TERMINAL_TEST_JVM").map(_.trim).filter(_.nonEmpty)
+    }
+    def javaHome = Task {
+      testJvm() match {
+        case Some(id) =>
+          val asPath = scala.util.Try(os.Path(id, BuildCtx.workspaceRoot)).toOption
+            .filter(os.isDir(_))
+          val path = asPath.getOrElse {
+            mill.util.Jvm.resolveJavaHome(
+              id = id,
+              ctx = Some(Task.ctx()),
+              coursierCacheCustomizer = coursierCacheCustomizer()
+            ).get
+          }
+          Some(PathRef(path, quick = true))
+        case None =>
+          super.javaHome()
+      }
+    }
+
     // Run the tests against the native-terminal JAR rather than its class directory, so that
     // the multi-release JAR mechanism kicks in, and the FFM classes are used on Java >= 22
     def runClasspath = Task {
