@@ -10,8 +10,10 @@
  */
 package io.github.alexarchambault.nativeterm.internal;
 
+import java.lang.foreign.Arena;
 import java.lang.foreign.MemoryLayout;
 import java.lang.foreign.MemorySegment;
+import java.lang.foreign.ValueLayout;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
@@ -36,13 +38,25 @@ final class Kernel32 {
         }
     }
 
-    static void FormatMessageW(
+    /**
+     * @param lpBuffer buffer receiving the message, at least {@code nSize} WCHARs (so {@code 2 * nSize} bytes) long
+     * @param nSize size of {@code lpBuffer}, in WCHARs
+     * @return the number of WCHARs written to {@code lpBuffer}, excluding the terminating null character, or 0 on failure
+     */
+    static int FormatMessageW(
             int dwMessageId,
             MemorySegment lpBuffer,
             int nSize) {
         MethodHandle mh$ = requireNonNull(FormatMessageW$MH, "FormatMessageW");
         try {
-            mh$.invokeExact(Kernel32.FORMAT_MESSAGE_FROM_SYSTEM, MemorySegment.NULL, dwMessageId, 0, lpBuffer, nSize, MemorySegment.NULL);
+            return (int) mh$.invokeExact(
+                    Kernel32.FORMAT_MESSAGE_FROM_SYSTEM,
+                    MemorySegment.NULL,
+                    dwMessageId,
+                    0,
+                    lpBuffer,
+                    nSize,
+                    MemorySegment.NULL);
         } catch (Throwable ex$) {
             throw new AssertionError("should not reach here", ex$);
         }
@@ -92,15 +106,15 @@ final class Kernel32 {
     }
 
     static String getErrorMessage(int errorCode) {
-        int bufferSize = 160;
-        try (java.lang.foreign.Arena arena = java.lang.foreign.Arena.ofConfined()) {
-            java.lang.foreign.MemorySegment data = arena.allocate(bufferSize);
-            FormatMessageW(
-                    errorCode,
-                    data,
-                    bufferSize
-            );
-            return new String(data.toArray(java.lang.foreign.ValueLayout.JAVA_BYTE), StandardCharsets.UTF_16LE).trim();
+        int bufferSize = 512; // in WCHARs
+        try (Arena arena = Arena.ofConfined()) {
+            MemorySegment data = arena.allocate(ValueLayout.JAVA_CHAR, bufferSize);
+            int len = FormatMessageW(errorCode, data, bufferSize);
+            if (len <= 0)
+                return "Error code " + errorCode;
+            len = Math.min(len, bufferSize);
+            byte[] bytes = data.asSlice(0, 2L * len).toArray(ValueLayout.JAVA_BYTE);
+            return new String(bytes, StandardCharsets.UTF_16LE).trim();
         }
     }
 
