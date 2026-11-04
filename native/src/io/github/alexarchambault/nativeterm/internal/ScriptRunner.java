@@ -39,6 +39,34 @@ public final class ScriptRunner {
                 .redirectInput(ProcessBuilder.Redirect.INHERIT)
                 .redirectError(ProcessBuilder.Redirect.INHERIT);
 
+        return runAndReadOutput(builder, "Error running powershell script");
+    }
+
+    /**
+     * Runs {@code tput} in the current terminal
+     * @param s the {@code tput} parameter you're interested in
+     * @return the value of that parameter returned by {@code tput}, as an integer
+     * @throws InterruptedException if the tput sub-process gets interrupted
+     * @throws IOException if anything goes wrong
+     */
+    public static int runTput(String s) throws InterruptedException, IOException {
+        ProcessBuilder builder = new ProcessBuilder()
+                .command("tput", s)
+                .redirectOutput(ProcessBuilder.Redirect.PIPE)
+                .redirectInput(ProcessBuilder.Redirect.INHERIT)
+                .redirectError(ProcessBuilder.Redirect.INHERIT);
+
+        return Integer.parseInt(runAndReadOutput(builder, "tput " + s + " failed").trim());
+    }
+
+    /**
+     * Starts a process, reads its standard output until EOF, and waits for it to exit
+     *
+     * @param builder the process to start, with its output redirected to a pipe
+     * @param errorPrefix prefix of the exception message if the process exits with a non-zero code
+     * @return the standard output of the process, with each line terminated by {@code \r\n}
+     */
+    private static String runAndReadOutput(ProcessBuilder builder, String errorPrefix) throws InterruptedException, IOException {
         Process proc = builder.start();
 
         StringBuilder results = new StringBuilder();
@@ -59,48 +87,10 @@ public final class ScriptRunner {
             }
         }
 
-        int retCode = proc.waitFor();
-        if (retCode != 0)
-            throw new IOException("Error running powershell script (return code: " + retCode + ")");
-        return results.toString();
-    }
-
-    /**
-     * Runs {@code tput} in the current terminal
-     * @param s the {@code tput} parameter you're interested in
-     * @return the value of that parameter returned by {@code tput}, as an integer
-     * @throws InterruptedException if the tput sub-process gets interrupted
-     * @throws IOException if anything goes wrong
-     */
-    public static int runTput(String s) throws InterruptedException, IOException {
-        Process proc = new ProcessBuilder()
-                .command("tput", s)
-                .redirectOutput(ProcessBuilder.Redirect.PIPE)
-                .redirectInput(ProcessBuilder.Redirect.INHERIT)
-                .redirectError(ProcessBuilder.Redirect.INHERIT)
-                .start();
-
-        StringBuilder results = new StringBuilder();
-        BufferedReader reader = new BufferedReader(new InputStreamReader(proc.getInputStream(), StandardCharsets.UTF_8));
-        try {
-            String line = reader.readLine();
-            while (line != null) {
-                results.append(line);
-                results.append("\r\n");
-                line = reader.readLine();
-            }
-        } finally {
-            proc.destroy();
-            try {
-                reader.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-
         int exitCode = proc.waitFor();
-        if (exitCode != 0) throw new IOException("tput " + s + " failed (exit code: " + exitCode + ")");
-        return Integer.parseInt(results.toString().trim());
+        if (exitCode != 0)
+            throw new IOException(errorPrefix + " (exit code: " + exitCode + ")");
+        return results.toString();
     }
 
 }
