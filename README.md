@@ -20,7 +20,7 @@ lowering the odds of something going wrong when generating or using a GraalVM na
 
 Add to your `build.sbt`
 ```scala
-libraryDependencies += "io.github.alexarchambault.native-terminal" % "native-terminal" % "0.0.7"
+libraryDependencies += "io.github.alexarchambault.native-terminal" % "native-terminal" % "0.0.9.1"
 ```
 
 The latest version is [![Maven Central](https://img.shields.io/maven-central/v/io.github.alexarchambault.native-terminal/native-terminal.svg)](https://maven-badges.herokuapp.com/maven-central/io.github.alexarchambault.native-terminal/native-terminal).
