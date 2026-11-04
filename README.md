@@ -103,6 +103,24 @@ querying the terminal size is made.
 On Windows, this class just calls `NativeTerminal.getSize()` upon every call to
 `TerminalSizeCache#getSize()`.
 
+### Fallbacks running external processes
+
+`TerminalScriptFallbacks` has the same methods as `NativeTerminal`, but doesn't make any native call
+from the JVM. It runs external processes instead: `tput` on Linux / macOS, and PowerShell scripts
+calling `kernel32.dll` methods on Windows. This is much slower, but can be used if native calls
+aren't an option in your environment.
+
+```java
+import io.github.alexarchambault.nativeterm.TerminalScriptFallbacks;
+import io.github.alexarchambault.nativeterm.TerminalSize;
+
+boolean success = TerminalScriptFallbacks.setupAnsi();
+TerminalSize size = TerminalScriptFallbacks.getSize();
+```
+
+`TerminalScriptFallbacks.getSize()` throws an `IllegalArgumentException` if the current process
+isn't attached to a terminal.
+
 ## JDK 22 and later
 
 The `native-terminal` JAR is a multi-release JAR. On JDK 22 and later, it doesn't use
