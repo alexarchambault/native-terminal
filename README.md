@@ -76,8 +76,10 @@ On Windows, this class just calls `NativeTerminal.getSize()` upon every call to
 ## License
 
 All files in this repository, except `NativeImageFeature.java`, can be used either under the
-Apache 2.0 license, or the GNU GPL version 2 license, at your convenience.
+Apache 2.0 license, or the GNU GPL version 2 license with the Classpath Exception, at your convenience.
 
-The `NativeImageFeature.java` file, originally based on a GNU GPL version 2 only file, is licensed only
-under the GNU GPL version 2 license.
+The `NativeImageFeature.java` file, originally based on a GNU GPL version 2 only file (with the
+Classpath Exception), is licensed only under the GNU GPL version 2 license with the Classpath Exception.
+
+See [LICENSE](LICENSE) for the full terms.
 
