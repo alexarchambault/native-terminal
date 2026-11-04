@@ -39,7 +39,7 @@ object Versions {
   }
 }
 
-trait WindowsAnsiPublishModule extends WindowsAnsiJavaModule with PublishModule with Mima {
+trait NativeTerminalPublishModule extends NativeTerminalJavaModule with PublishModule with Mima {
   def pomSettings = PomSettings(
     description = artifactName(),
     organization = "io.github.alexarchambault.native-terminal",
@@ -81,7 +81,7 @@ trait WindowsAnsiPublishModule extends WindowsAnsiJavaModule with PublishModule 
   }
 }
 
-trait WindowsAnsiJavaModule extends JavaModule {
+trait NativeTerminalJavaModule extends JavaModule {
   def jvmRelease: T[String] = Task.Input("8")
   private def isArm64 =
     Option(System.getProperty("os.arch")).map(_.toLowerCase(Locale.ROOT)) match {
@@ -117,7 +117,7 @@ trait WindowsAnsiJavaModule extends JavaModule {
   }
 }
 
-object native extends JavaModule with WindowsAnsiPublishModule {
+object native extends JavaModule with NativeTerminalPublishModule {
   def artifactName = "native-terminal"
   def mvnDeps = Seq(
     mvn"io.github.alexarchambault:is-terminal:0.1.2",
@@ -139,13 +139,13 @@ object native extends JavaModule with WindowsAnsiPublishModule {
     super.manifest().add("Multi-Release" -> "true")
   }
 
-  object jdk22 extends WindowsAnsiJavaModule {
+  object jdk22 extends NativeTerminalJavaModule {
     def jvmRelease: T[String] = Task.Input("22")
     def moduleDeps = Seq(native)
   }
 }
 
-object `native-no-ffm` extends JavaModule with WindowsAnsiPublishModule {
+object `native-no-ffm` extends JavaModule with NativeTerminalPublishModule {
   def artifactName = Task {
     native.artifactName() + "-no-ffm"
   }
@@ -154,7 +154,7 @@ object `native-no-ffm` extends JavaModule with WindowsAnsiPublishModule {
   def sources = native.sources
 }
 
-object `native-graalvm` extends JavaModule with WindowsAnsiPublishModule {
+object `native-graalvm` extends JavaModule with NativeTerminalPublishModule {
   def moduleDeps = Seq(native)
   def artifactName = "native-terminal-graalvm"
   def pomSettings = super.pomSettings().copy(
@@ -171,7 +171,7 @@ object `native-graalvm` extends JavaModule with WindowsAnsiPublishModule {
   }
 }
 
-object fallbacks extends JavaModule with WindowsAnsiPublishModule {
+object fallbacks extends JavaModule with NativeTerminalPublishModule {
   def artifactName = "native-terminal-fallbacks"
   def mimaPreviousVersions = {
     val publishedSince = coursier.version.Version("0.0.2")
