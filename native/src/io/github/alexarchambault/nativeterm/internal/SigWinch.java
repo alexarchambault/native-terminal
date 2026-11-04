@@ -4,6 +4,7 @@ import sun.misc.Signal;
 import sun.misc.SignalHandler;
 
 import java.util.Locale;
+import java.util.function.Consumer;
 
 /**
  * Helper to register handlers of the WINCH signal (terminal size change)
@@ -11,17 +12,37 @@ import java.util.Locale;
 public final class SigWinch {
     private SigWinch() {}
 
+    private static final Consumer<Throwable> ignoreErrors = new Consumer<Throwable>() {
+        @Override
+        public void accept(Throwable t) {}
+    };
+
+    /**
+     * Register a new WINCH handler
+     *
+     * <p>Same as {@link #addHandler(Runnable, Consumer)}, ignoring errors.
+     *
+     * @param runnable A Runnable, run every time a WINCH signal is received
+     */
+    public static void addHandler(Runnable runnable) {
+        addHandler(runnable, ignoreErrors);
+    }
+
     /**
      * Register a new WINCH handler
      *
      * <p>Handlers registered earlier (by this class or by other libraries) are kept, and
      * run after the new one.
      *
-     * <p>This is a no-op on Windows, or if the WINCH signal isn't supported by the current JVM.
+     * <p>This is a no-op on Windows. If the WINCH signal can't be handled on other platforms
+     * (it's not supported by the current JVM, or it's already used by the JVM), no handler is
+     * registered, and the exception thrown when trying to register one is passed to
+     * {@code onError}.
      *
      * @param runnable A Runnable, run every time a WINCH signal is received
+     * @param onError Called with the exception thrown if the handler can't be registered
      */
-    public static void addHandler(Runnable runnable) {
+    public static void addHandler(Runnable runnable, Consumer<Throwable> onError) {
 
         boolean isWindows = System.getProperty("os.name", "")
                 .toLowerCase(Locale.ROOT)
@@ -34,6 +55,7 @@ public final class SigWinch {
             signal = new Signal("WINCH");
         } catch (IllegalArgumentException e) {
             // WINCH not supported here
+            onError.accept(e);
             return;
         }
 
@@ -64,6 +86,7 @@ public final class SigWinch {
             previous0 = Signal.handle(signal, handler);
         } catch (IllegalArgumentException e) {
             // signal already used by the JVM, or not supported
+            onError.accept(e);
             return;
         }
         synchronized (previous) {
