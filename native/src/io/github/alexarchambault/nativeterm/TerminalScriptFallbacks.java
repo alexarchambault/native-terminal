@@ -67,9 +67,12 @@ public final class TerminalScriptFallbacks {
     public static boolean setupAnsi() throws InterruptedException, IOException {
         if (isWindows && IsTerminal.isTerminal()) {
             String output = ScriptRunner.runPowerShellScript(WindowsTermScripts.enableAnsiScript);
-            String[] lines = output.split("\\r?\\n");
-            String lastLine = lines[lines.length - 1];
-            return Boolean.parseBoolean(lastLine);
+            String lastLine = lastLine(output, "enables ANSI output");
+            if (lastLine.equals("true"))
+                return true;
+            if (lastLine.equals("false"))
+                return false;
+            throw new IOException("Invalid output from PowerShell script that enables ANSI output: '" + output.trim() + "'");
         }
         return true;
     }
