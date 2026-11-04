@@ -3,6 +3,7 @@ package io.github.alexarchambault.nativeterm;
 import io.github.alexarchambault.nativeterm.internal.SigWinch;
 
 import java.io.IOException;
+import java.util.function.Consumer;
 
 /**
  * Helper caching the terminal size, and re-querying it only if a SIGWINCH has been received
@@ -18,15 +19,42 @@ public final class TerminalSizeCache {
      *
      * <p>As much as possible, only create a single instance of this class,
      * and re-use it through your application.
+     *
+     * <p>Errors while setting up the signal handler are ignored. Use
+     * {@link #TerminalSizeCache(Consumer)} to be notified of them.
      */
     public TerminalSizeCache() {
+        this(
+                new Consumer<Throwable>() {
+                    @Override
+                    public void accept(Throwable t) {}
+                }
+        );
+    }
+
+    /**
+     * Create a new TerminalSizeCache
+     *
+     * <p>This sets up a signal handler for the WINCH signal.
+     *
+     * <p>If that handler can't be set up (the WINCH signal isn't supported by the current JVM,
+     * or it's already used by the JVM), {@code onError} is called with the exception that was thrown.
+     * The terminal size is then still cached, but the cached value is never invalidated.
+     *
+     * <p>As much as possible, only create a single instance of this class,
+     * and re-use it through your application.
+     *
+     * @param onError Called with the exception thrown if the WINCH signal handler can't be set up
+     */
+    public TerminalSizeCache(Consumer<Throwable> onError) {
         SigWinch.addHandler(
                 new Runnable() {
                     @Override
                     public void run() {
                         terminalSize = null;
                     }
-                }
+                },
+                onError
         );
     }
 

@@ -113,6 +113,16 @@ querying the terminal size is made.
 On Windows, this class just calls `NativeTerminal.getSize()` upon every call to
 `TerminalSizeCache#getSize()`.
 
+If the WINCH signal handler can't be set up (if the WINCH signal is already used by the JVM, for example),
+the cached size is never invalidated. Errors setting up the handler are ignored by default. Pass a callback
+to the constructor to be notified of them:
+
+```java
+TerminalSizeCache cache = new TerminalSizeCache(
+    t -> System.err.println("Can't watch terminal size changes: " + t)
+);
+```
+
 ### Fallbacks running external processes
 
 `TerminalScriptFallbacks` has the same methods as `NativeTerminal`, but doesn't make any native call
