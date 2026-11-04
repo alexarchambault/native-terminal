@@ -21,25 +21,30 @@ public final class TerminalScriptFallbacks {
      * <p>This runs {@code tput} via an external process on Linux / Mac, and runs
      * a PowerShell script that calls {@code kernel32.dll} methods on Windows
      *
-     * @throws InterruptedException if the PowerShell sub-process gets interrupted
-     * @throws IOException if anything goes wrong
+     * @throws InterruptedException if the {@code tput} or PowerShell sub-process gets interrupted
+     * @throws IOException if anything goes wrong (sub-process failure, unexpected output, etc.)
+     * @throws IllegalArgumentException if the current process isn't attached to a terminal
      * @return the terminal size
      */
     public static TerminalSize getSize() throws InterruptedException, IOException {
         if (!IsTerminal.isTerminal())
             throw new IllegalArgumentException("Cannot get terminal size without a terminal");
         if (isWindows) {
-            String output = ScriptRunner.runPowerShellScript(WindowsTermScripts.getConsoleDimScript).trim();
-            String[] lines = output.split("\\r?\\n");
-            String lastLine = lines[lines.length - 1];
-            if (lastLine.startsWith("Error:"))
-                throw new IOException(lastLine);
-            if (lastLine.startsWith("Size: ")) {
-                lastLine = lastLine.substring("Size: ".length());
-                String[] split = lastLine.split("\\s+");
-                return new TerminalSize(Integer.parseInt(split[0]), Integer.parseInt(split[1]));
+            String output = ScriptRunner.runPowerShellScript(WindowsTermScripts.getConsoleDimScript);
+            String lastLine = lastLine(output, "gets terminal size");
+            String prefix = "Size: ";
+            if (lastLine.startsWith(prefix)) {
+                String[] split = lastLine.substring(prefix.length()).trim().split("\\s+");
+                if (split.length == 2) {
+                    try {
+                        return new TerminalSize(Integer.parseInt(split[0]), Integer.parseInt(split[1]));
+                    } catch (NumberFormatException e) {
+                        throw new IOException("Malformed size in output of PowerShell script that gets terminal size: '" + lastLine + "'", e);
+                    }
+                }
+                throw new IOException("Malformed size in output of PowerShell script that gets terminal size: '" + lastLine + "'");
             }
-            throw new IOException("Invalid output from PowerShell script that gets terminal size: '" + output + "'");
+            throw new IOException("Invalid output from PowerShell script that gets terminal size: '" + output.trim() + "'");
         }
         else {
             return new TerminalSize(ScriptRunner.runTput("cols"), ScriptRunner.runTput("lines"));
@@ -62,10 +67,28 @@ public final class TerminalScriptFallbacks {
     public static boolean setupAnsi() throws InterruptedException, IOException {
         if (isWindows && IsTerminal.isTerminal()) {
             String output = ScriptRunner.runPowerShellScript(WindowsTermScripts.enableAnsiScript);
-            String[] lines = output.split("\\r?\\n");
-            String lastLine = lines[lines.length - 1];
-            return Boolean.parseBoolean(lastLine);
+            String lastLine = lastLine(output, "enables ANSI output");
+            if (lastLine.equals("true"))
+                return true;
+            if (lastLine.equals("false"))
+                return false;
+            throw new IOException("Invalid output from PowerShell script that enables ANSI output: '" + output.trim() + "'");
         }
         return true;
+    }
+
+    /**
+     * Returns the last non-empty line of a PowerShell script output
+     *
+     * @throws IOException if the output is empty, or if its last line is an error reported by the script
+     */
+    private static String lastLine(String output, String scriptDescription) throws IOException {
+        String[] lines = output.trim().split("\\r?\\n");
+        String lastLine = lines[lines.length - 1].trim();
+        if (lastLine.isEmpty())
+            throw new IOException("Empty output from PowerShell script that " + scriptDescription);
+        if (lastLine.startsWith("Error:"))
+            throw new IOException("PowerShell script that " + scriptDescription + " failed: " + lastLine);
+        return lastLine;
     }
 }

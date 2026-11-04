@@ -39,30 +39,7 @@ public final class ScriptRunner {
                 .redirectInput(ProcessBuilder.Redirect.INHERIT)
                 .redirectError(ProcessBuilder.Redirect.INHERIT);
 
-        Process proc = builder.start();
-
-        StringBuilder results = new StringBuilder();
-        BufferedReader reader = new BufferedReader(new InputStreamReader(proc.getInputStream(), StandardCharsets.UTF_8));
-        try {
-            String line = reader.readLine();
-            while (line != null) {
-                results.append(line);
-                results.append("\r\n");
-                line = reader.readLine();
-            }
-        } finally {
-            proc.destroy();
-            try {
-                reader.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-        }
-
-        int retCode = proc.waitFor();
-        if (retCode != 0)
-            throw new IOException("Error running powershell script (return code: " + retCode + ")");
-        return results.toString();
+        return runAndReadOutput(builder, "Error running powershell script");
     }
 
     /**
@@ -73,34 +50,55 @@ public final class ScriptRunner {
      * @throws IOException if anything goes wrong
      */
     public static int runTput(String s) throws InterruptedException, IOException {
-        Process proc = new ProcessBuilder()
+        ProcessBuilder builder = new ProcessBuilder()
                 .command("tput", s)
                 .redirectOutput(ProcessBuilder.Redirect.PIPE)
                 .redirectInput(ProcessBuilder.Redirect.INHERIT)
-                .redirectError(ProcessBuilder.Redirect.INHERIT)
-                .start();
+                .redirectError(ProcessBuilder.Redirect.INHERIT);
 
-        StringBuilder results = new StringBuilder();
-        BufferedReader reader = new BufferedReader(new InputStreamReader(proc.getInputStream(), StandardCharsets.UTF_8));
+        String output = runAndReadOutput(builder, "tput " + s + " failed").trim();
         try {
-            String line = reader.readLine();
-            while (line != null) {
-                results.append(line);
-                results.append("\r\n");
-                line = reader.readLine();
-            }
-        } finally {
-            proc.destroy();
-            try {
-                reader.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+            return Integer.parseInt(output);
+        } catch (NumberFormatException e) {
+            throw new IOException("Unexpected output from tput " + s + ": '" + output + "'", e);
         }
+    }
 
-        int exitCode = proc.waitFor();
-        if (exitCode != 0) throw new IOException("tput failed");
-        return Integer.parseInt(results.toString().trim());
+    /**
+     * Starts a process, reads its standard output until EOF, and waits for it to exit
+     *
+     * <p>The process is only destroyed if something goes wrong (reading its output fails,
+     * or the current thread gets interrupted while waiting for it): it must not be destroyed
+     * when it closed its standard output but didn't exit yet, as killing it then would
+     * make it exit with a non-zero code.
+     *
+     * @param builder the process to start, with its output redirected to a pipe
+     * @param errorPrefix prefix of the exception message if the process exits with a non-zero code
+     * @return the standard output of the process, with each line terminated by {@code \r\n}
+     */
+    private static String runAndReadOutput(ProcessBuilder builder, String errorPrefix) throws InterruptedException, IOException {
+        Process proc = builder.start();
+        boolean success = false;
+        try {
+            StringBuilder results = new StringBuilder();
+            try (BufferedReader reader = new BufferedReader(new InputStreamReader(proc.getInputStream(), StandardCharsets.UTF_8))) {
+                String line = reader.readLine();
+                while (line != null) {
+                    results.append(line);
+                    results.append("\r\n");
+                    line = reader.readLine();
+                }
+            }
+
+            int exitCode = proc.waitFor();
+            if (exitCode != 0)
+                throw new IOException(errorPrefix + " (exit code: " + exitCode + ")");
+            success = true;
+            return results.toString();
+        } finally {
+            if (!success)
+                proc.destroy();
+        }
     }
 
 }

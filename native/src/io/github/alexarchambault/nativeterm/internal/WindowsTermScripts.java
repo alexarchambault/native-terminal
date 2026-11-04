@@ -7,19 +7,11 @@ public final class WindowsTermScripts {
 
     private WindowsTermScripts() {}
 
-    static boolean isWindows;
-
-    static {
-        isWindows = System.getProperty("os.name")
-                .toLowerCase(java.util.Locale.ROOT)
-                .contains("windows");
-    }
-
     // adapted from https://github.com/rprichard/winpty/blob/7e59fe2d09adf0fa2aa606492e7ca98efbc5184e/misc/ConinMode.ps1
     /**
      * Script to enable ANSI output
      */
-    public static String enableAnsiScript =
+    public static final String enableAnsiScript =
             "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8\n" +
             "$signature = @'\n" +
             "[DllImport(\"kernel32.dll\", SetLastError = true)]\n" +
@@ -57,7 +49,7 @@ public final class WindowsTermScripts {
     /**
      * Script to get the terminal size
      */
-    public static String getConsoleDimScript =
+    public static final String getConsoleDimScript =
             "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8\n" +
             "$signature = @\"\n" +
             "using System;\n" +
