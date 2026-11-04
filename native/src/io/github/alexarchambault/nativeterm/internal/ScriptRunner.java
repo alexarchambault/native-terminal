@@ -56,7 +56,12 @@ public final class ScriptRunner {
                 .redirectInput(ProcessBuilder.Redirect.INHERIT)
                 .redirectError(ProcessBuilder.Redirect.INHERIT);
 
-        return Integer.parseInt(runAndReadOutput(builder, "tput " + s + " failed").trim());
+        String output = runAndReadOutput(builder, "tput " + s + " failed").trim();
+        try {
+            return Integer.parseInt(output);
+        } catch (NumberFormatException e) {
+            throw new IOException("Unexpected output from tput " + s + ": '" + output + "'", e);
+        }
     }
 
     /**
