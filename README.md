@@ -103,6 +103,22 @@ querying the terminal size is made.
 On Windows, this class just calls `NativeTerminal.getSize()` upon every call to
 `TerminalSizeCache#getSize()`.
 
+## JDK 22 and later
+
+The `native-terminal` JAR is a multi-release JAR. On JDK 22 and later, it doesn't use
+jline-native, and calls `ioctl` or `kernel32.dll` methods via the
+[Foreign Function & Memory API](https://openjdk.org/jeps/454) instead.
+
+The JVM prints a warning the first time such native calls are made, unless native access is enabled. Pass
+```text
+--enable-native-access=ALL-UNNAMED
+```
+to `java` to enable it (or the name of your module rather than `ALL-UNNAMED`, if you use the module system).
+For an executable JAR, you can also add `Enable-Native-Access: ALL-UNNAMED` to its manifest.
+
+Note that from JDK 24 onwards, loading JNI libraries such as jline-native's also prints such a warning
+if native access isn't enabled.
+
 ## License
 
 All files in this repository, except `NativeImageFeature.java`, can be used either under the
