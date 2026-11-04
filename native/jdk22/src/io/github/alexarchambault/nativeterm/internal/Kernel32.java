@@ -107,7 +107,6 @@ final class Kernel32 {
     private static final java.lang.foreign.SymbolLookup SYMBOL_LOOKUP;
 
     static {
-        System.loadLibrary("msvcrt");
         System.loadLibrary("Kernel32");
         SYMBOL_LOOKUP = java.lang.foreign.SymbolLookup.loaderLookup();
     }
