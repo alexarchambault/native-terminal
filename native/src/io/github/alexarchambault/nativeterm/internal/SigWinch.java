@@ -14,7 +14,7 @@ public final class SigWinch {
     /**
      * Register a new WINCH handler
      *
-     * <p>This is a no-op on Windows.
+     * <p>This is a no-op on Windows, or if the WINCH signal isn't supported by the current JVM.
      *
      * @param runnable A Runnable, run every time a WINCH signal is received
      */
@@ -26,6 +26,14 @@ public final class SigWinch {
         if (isWindows)
             return;
 
+        Signal signal;
+        try {
+            signal = new Signal("WINCH");
+        } catch (IllegalArgumentException e) {
+            // WINCH not supported here
+            return;
+        }
+
         SignalHandler handler = new SignalHandler() {
             @Override
             public void handle(Signal arg0) {
@@ -33,7 +41,12 @@ public final class SigWinch {
             }
         };
 
-        Signal.handle(new Signal("WINCH"), handler);
+        try {
+            Signal.handle(signal, handler);
+        } catch (IllegalArgumentException e) {
+            // signal already used by the JVM, or not supported
+            return;
+        }
     }
 
 }
