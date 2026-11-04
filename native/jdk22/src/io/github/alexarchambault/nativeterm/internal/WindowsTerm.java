@@ -24,15 +24,27 @@ public final class WindowsTerm {
     // adapted from https://github.com/jline/jline3/blob/8bb13a89fad80e51726a29e4b1f8a0724fed78b2/terminal-jna/src/main/java/org/jline/terminal/impl/jna/win/JnaWinSysTerminal.java#L92-L96
     /**
      * Gets the terminal size
+     *
+     * Reads the size of the console attached to standard output, or to standard error if
+     * standard output isn't a console (if it's redirected, for example).
+     *
      * @return the terminal size
-     * @throws IOException if anything goes wrong
+     * @throws IOException if anything goes wrong, like neither standard output nor standard error being a console
      */
     public static TerminalSize getSize() throws IOException {
         try (Arena arena = Arena.ofConfined()) {
             MemorySegment callState = Kernel32.allocateCallState(arena);
-            MemorySegment console = Kernel32.GetStdHandle(Kernel32.STD_OUTPUT_HANDLE);
             Kernel32.CONSOLE_SCREEN_BUFFER_INFO info = new Kernel32.CONSOLE_SCREEN_BUFFER_INFO(arena);
-            Kernel32.GetConsoleScreenBufferInfo(callState, console, info);
+            MemorySegment console = Kernel32.GetStdHandle(Kernel32.STD_OUTPUT_HANDLE);
+            if (Kernel32.GetConsoleScreenBufferInfo(callState, console, info) == 0) {
+                String stdoutError = Kernel32.lastErrorMessage(callState);
+                console = Kernel32.GetStdHandle(Kernel32.STD_ERROR_HANDLE);
+                if (Kernel32.GetConsoleScreenBufferInfo(callState, console, info) == 0)
+                    throw new IOException(
+                        "Failed to get console screen buffer info: " + stdoutError +
+                        " (stdout), " + Kernel32.lastErrorMessage(callState) + " (stderr)"
+                    );
+            }
             return TerminalSize.of(info.windowWidth(), info.windowHeight());
         }
     }
