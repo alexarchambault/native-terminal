@@ -19,6 +19,7 @@ jobs:
         with:
           jvm: "24"
       - run: ./mill __.publishLocal
+      - run: ./mill __.mimaReportBinaryIssues
 
   release:
     runs-on: ubuntu-latest
