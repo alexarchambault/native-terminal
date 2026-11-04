@@ -64,10 +64,18 @@ trait NativeTerminalPublishModule extends NativeTerminalJavaModule with PublishM
     PathRef(jar)
   }
 
+  /** First version of this module published on Maven Central.
+    *
+    * Some 'v*' tags predate that (or were never published at all), so MiMa can't check against
+    * them.
+    */
+  def mimaFirstVersion: String
+
   def mimaPreviousVersions: T[Seq[String]] = Task.Input {
     val current = os.proc("git", "describe", "--tags", "--match", "v*")
       .call(cwd = BuildCtx.workspaceRoot)
       .out.trim()
+    val firstVersion = coursier.version.Version(mimaFirstVersion)
     os.proc("git", "tag", "-l")
       .call(cwd = BuildCtx.workspaceRoot)
       .out.lines()
@@ -76,6 +84,7 @@ trait NativeTerminalPublishModule extends NativeTerminalJavaModule with PublishM
       .filter(!_.contains("-"))
       .map(_.stripPrefix("v"))
       .map(coursier.version.Version(_))
+      .filter(_ >= firstVersion)
       .sorted
       .map(_.repr)
   }
@@ -118,7 +127,8 @@ trait NativeTerminalJavaModule extends JavaModule {
 }
 
 object native extends JavaModule with NativeTerminalPublishModule {
-  def artifactName = "native-terminal"
+  def artifactName     = "native-terminal"
+  def mimaFirstVersion = "0.0.7"
   def mvnDeps = Seq(
     mvn"io.github.alexarchambault:is-terminal:0.1.2",
     // jline-native 4.x requires Java 11 (see .scala-steward.conf)
@@ -150,34 +160,25 @@ object `native-no-ffm` extends JavaModule with NativeTerminalPublishModule {
   def artifactName = Task {
     native.artifactName() + "-no-ffm"
   }
-  def mvnDeps = native.mvnDeps
+  def mimaFirstVersion = "0.0.9.1"
+  def mvnDeps          = native.mvnDeps
 
   def sources = native.sources
 }
 
 object `native-graalvm` extends JavaModule with NativeTerminalPublishModule {
-  def moduleDeps = Seq(native)
-  def artifactName = "native-terminal-graalvm"
+  def moduleDeps       = Seq(native)
+  def artifactName     = "native-terminal-graalvm"
+  def mimaFirstVersion = "0.0.7"
   def pomSettings = super.pomSettings().copy(
     licenses = Seq(License.`GPL-2.0-with-classpath-exception`)
   )
   def compileMvnDeps = Seq(
     mvn"org.graalvm.nativeimage:svm:22.0.0.2"
   )
-  def mimaPreviousVersions = {
-    val publishedSince = coursier.version.Version("0.0.4")
-    super.mimaPreviousVersions().dropWhile { v =>
-      coursier.version.Version(v) < publishedSince
-    }
-  }
 }
 
 object fallbacks extends JavaModule with NativeTerminalPublishModule {
-  def artifactName = "native-terminal-fallbacks"
-  def mimaPreviousVersions = {
-    val publishedSince = coursier.version.Version("0.0.2")
-    super.mimaPreviousVersions().dropWhile { v =>
-      coursier.version.Version(v) < publishedSince
-    }
-  }
+  def artifactName     = "native-terminal-fallbacks"
+  def mimaFirstVersion = "0.0.7"
 }
