@@ -276,7 +276,7 @@ object `native-graalvm` extends JavaModule with NativeTerminalPublishModule {
   )
   // Provides org.graalvm.nativeimage.* and com.oracle.svm.core.annotate.*
   def compileMvnDeps = Seq(
-    mvn"org.graalvm.sdk:nativeimage:25.0.5"
+    mvn"org.graalvm.sdk:nativeimage:25.0.5.0.3"
   )
   def mimaBinaryIssueFilters = super.mimaBinaryIssueFilters() ++ Seq(
     // NativeImageFeature (package private) and Placeholder (only there for javadoc) were removed:
