@@ -157,6 +157,13 @@ object native extends JavaModule with NativeTerminalPublishModule {
 
   object test extends JavaTests with TestModule.Junit5 {
     def jupiterVersion = "5.14.4"
+
+    // Run the tests against the native-terminal JAR rather than its class directory, so that
+    // the multi-release JAR mechanism kicks in, and the FFM classes are used on Java >= 22
+    def runClasspath = Task {
+      val nativeLocalCp = native.localRunClasspath().toSet
+      super.runClasspath().filterNot(nativeLocalCp) ++ Seq(native.jar())
+    }
   }
 }
 
