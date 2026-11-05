@@ -5,7 +5,7 @@
 //| - com.github.lolgab::mill-mima_mill1:0.2.2
 //| - io.get-coursier:interface:1.0.29
 
-import com.github.lolgab.mill.mima.Mima
+import com.github.lolgab.mill.mima.{Mima, ProblemFilter}
 import mill.*
 import mill.api.BuildCtx
 import mill.javalib.*
@@ -39,7 +39,7 @@ object Versions {
   }
 }
 
-trait WindowsAnsiPublishModule extends WindowsAnsiJavaModule with PublishModule with Mima {
+trait NativeTerminalPublishModule extends NativeTerminalJavaModule with PublishModule with Mima {
   def pomSettings = PomSettings(
     description = artifactName(),
     organization = "io.github.alexarchambault.native-terminal",
@@ -64,10 +64,18 @@ trait WindowsAnsiPublishModule extends WindowsAnsiJavaModule with PublishModule 
     PathRef(jar)
   }
 
+  /** First version of this module published on Maven Central.
+    *
+    * Some 'v*' tags predate that (or were never published at all), so MiMa can't check against
+    * them.
+    */
+  def mimaFirstVersion: String
+
   def mimaPreviousVersions: T[Seq[String]] = Task.Input {
     val current = os.proc("git", "describe", "--tags", "--match", "v*")
       .call(cwd = BuildCtx.workspaceRoot)
       .out.trim()
+    val firstVersion = coursier.version.Version(mimaFirstVersion)
     os.proc("git", "tag", "-l")
       .call(cwd = BuildCtx.workspaceRoot)
       .out.lines()
@@ -76,12 +84,13 @@ trait WindowsAnsiPublishModule extends WindowsAnsiJavaModule with PublishModule 
       .filter(!_.contains("-"))
       .map(_.stripPrefix("v"))
       .map(coursier.version.Version(_))
+      .filter(_ >= firstVersion)
       .sorted
       .map(_.repr)
   }
 }
 
-trait WindowsAnsiJavaModule extends JavaModule {
+trait NativeTerminalJavaModule extends JavaModule {
   def jvmRelease: T[String] = Task.Input("8")
   private def isArm64 =
     Option(System.getProperty("os.arch")).map(_.toLowerCase(Locale.ROOT)) match {
@@ -117,11 +126,13 @@ trait WindowsAnsiJavaModule extends JavaModule {
   }
 }
 
-object native extends JavaModule with WindowsAnsiPublishModule {
-  def artifactName = "native-terminal"
+object native extends JavaModule with NativeTerminalPublishModule {
+  def artifactName     = "native-terminal"
+  def mimaFirstVersion = "0.0.7"
   def mvnDeps = Seq(
     mvn"io.github.alexarchambault:is-terminal:0.1.2",
-    mvn"org.jline:jline-native:4.4.8"
+    // jline-native 4.x requires Java 11 (see .scala-steward.conf)
+    mvn"org.jline:jline-native:3.30.17"
   )
 
   def jdk22ClassesResources = Task {
@@ -139,44 +150,119 @@ object native extends JavaModule with WindowsAnsiPublishModule {
     super.manifest().add("Multi-Release" -> "true")
   }
 
-  object jdk22 extends WindowsAnsiJavaModule {
+  object jdk22 extends NativeTerminalJavaModule {
     def jvmRelease: T[String] = Task.Input("22")
     def moduleDeps = Seq(native)
   }
+
+  object test extends JavaTests with TestModule.Junit5 {
+    def jupiterVersion = "5.14.4"
+
+    /** JVM to run the tests with, as a coursier JVM id (e.g. 'zulu:11') or a Java home path.
+      *
+      * Defaults to the JVM Mill runs on.
+      */
+    def testJvm = Task.Input {
+      Task.env.get("NATIVE_TERMINAL_TEST_JVM").map(_.trim).filter(_.nonEmpty)
+    }
+    def javaHome = Task {
+      testJvm() match {
+        case Some(id) =>
+          val path = resolveJvm(id, Task.ctx(), coursierCacheCustomizer())
+          Some(PathRef(path, quick = true))
+        case None =>
+          super.javaHome()
+      }
+    }
+
+    /** Java home of a JVM, from a coursier JVM id (e.g. 'zulu:11') or a Java home path */
+    private def resolveJvm(
+        id: String,
+        ctx: mill.api.TaskCtx,
+        coursierCacheCustomizer: Option[coursier.cache.FileCache[coursier.util.Task] => coursier.cache.FileCache[coursier.util.Task]]
+    ): os.Path = {
+      val asPath = scala.util.Try(os.Path(id, BuildCtx.workspaceRoot)).toOption
+        .filter(os.isDir(_))
+      asPath.getOrElse {
+        mill.util.Jvm.resolveJavaHome(
+          id = id,
+          ctx = Some(ctx),
+          coursierCacheCustomizer = coursierCacheCustomizer
+        ).get
+      }
+    }
+
+    /** Runs the tests with the JUnit console launcher, on the JVM with the passed id or path
+      * (see testJvm).
+      *
+      * Unlike 'test', this works on Java 8, which Mill's test runner doesn't support. The tests
+      * are compiled with the JVM Mill runs on (or the one of NATIVE_TERMINAL_TEST_JVM, if set).
+      */
+    def consoleTest(jvm: String) = Task.Command {
+      val javaHome = resolveJvm(jvm, Task.ctx(), coursierCacheCustomizer())
+      // JUnit Platform 1.x versions go along JUnit Jupiter 5.x ones
+      val platformVersion = "1." + jupiterVersion().stripPrefix("5.")
+      val console = defaultResolver().classpath(
+        Seq(mvn"org.junit.platform:junit-platform-console:$platformVersion")
+      )
+      val classPath = (runClasspath() ++ console).map(_.path).distinct
+      os.proc(
+        javaHome / "bin/java",
+        "-cp",
+        classPath.mkString(java.io.File.pathSeparator),
+        "org.junit.platform.console.ConsoleLauncher",
+        "execute",
+        "--disable-banner",
+        "--fail-if-no-tests",
+        "--scan-class-path",
+        compile().classes.path.toString
+      ).call(stdin = os.Inherit, stdout = os.Inherit, stderr = os.Inherit)
+      ()
+    }
+
+    // Run the tests against the native-terminal JAR rather than its class directory, so that
+    // the multi-release JAR mechanism kicks in, and the FFM classes are used on Java >= 22
+    def runClasspath = Task {
+      val nativeLocalCp = native.localRunClasspath().toSet
+      super.runClasspath().filterNot(nativeLocalCp) ++ Seq(native.jar())
+    }
+  }
 }
 
-object `native-no-ffm` extends JavaModule with WindowsAnsiPublishModule {
+object `native-no-ffm` extends JavaModule with NativeTerminalPublishModule {
   def artifactName = Task {
     native.artifactName() + "-no-ffm"
   }
-  def mvnDeps = native.mvnDeps
+  def mimaFirstVersion = "0.0.9.1"
+  def mvnDeps          = native.mvnDeps
 
   def sources = native.sources
 }
 
-object `native-graalvm` extends JavaModule with WindowsAnsiPublishModule {
-  def moduleDeps = Seq(native)
-  def artifactName = "native-terminal-graalvm"
+object `native-graalvm` extends JavaModule with NativeTerminalPublishModule {
+  def moduleDeps       = Seq(native)
+  def artifactName     = "native-terminal-graalvm"
+  def mimaFirstVersion = "0.0.7"
   def pomSettings = super.pomSettings().copy(
     licenses = Seq(License.`GPL-2.0-with-classpath-exception`)
   )
+  // Provides org.graalvm.nativeimage.* and com.oracle.svm.core.annotate.*
   def compileMvnDeps = Seq(
-    mvn"org.graalvm.nativeimage:svm:22.0.0.2"
+    mvn"org.graalvm.sdk:nativeimage:25.0.5"
   )
-  def mimaPreviousVersions = {
-    val publishedSince = coursier.version.Version("0.0.4")
-    super.mimaPreviousVersions().dropWhile { v =>
-      coursier.version.Version(v) < publishedSince
-    }
-  }
+  def mimaBinaryIssueFilters = super.mimaBinaryIssueFilters() ++ Seq(
+    // NativeImageFeature (package private) and Placeholder (only there for javadoc) were removed:
+    // jline-native now ships its own native-image config (in META-INF/native-image/org.jline/jline-native),
+    // which makes NativeImageFeature redundant
+    ProblemFilter.exclude[com.github.lolgab.mill.mima.MissingClassProblem](
+      "io.github.alexarchambault.windowsansi.Placeholder"
+    )
+  )
 }
 
-object fallbacks extends JavaModule with WindowsAnsiPublishModule {
-  def artifactName = "native-terminal-fallbacks"
-  def mimaPreviousVersions = {
-    val publishedSince = coursier.version.Version("0.0.2")
-    super.mimaPreviousVersions().dropWhile { v =>
-      coursier.version.Version(v) < publishedSince
-    }
-  }
+// Empty legacy artifact (no sources), still published for compatibility with
+// projects that depend on it
+object fallbacks extends JavaModule with NativeTerminalPublishModule {
+  def artifactName     = "native-terminal-fallbacks"
+  def mimaFirstVersion = "0.0.7"
 }
