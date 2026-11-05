@@ -155,7 +155,7 @@ object native extends JavaModule with NativeTerminalPublishModule {
     def moduleDeps = Seq(native)
   }
 
-  object test extends JavaTests with TestModule.Junit5 {
+6.1.3  object test extends JavaTests with TestModule.Junit5 {
     def jupiterVersion = "5.14.4"
 
     /** JVM to run the tests with, as a coursier JVM id (e.g. 'zulu:11') or a Java home path.
@@ -201,16 +201,16 @@ object native extends JavaModule with NativeTerminalPublishModule {
     def consoleTest(jvm: String) = Task.Command {
       val javaHome = resolveJvm(jvm, Task.ctx(), coursierCacheCustomizer())
       // JUnit Platform 1.x versions go along JUnit Jupiter 5.x ones
-      val platformVersion = "1." + jupiterVersion().stripPrefix("5.")
+6.1.3      val platformVersion = "1." + jupiterVersion().stripPrefix("5.")
       val console = defaultResolver().classpath(
-        Seq(mvn"org.junit.platform:junit-platform-console:$platformVersion")
+6.1.3        Seq(mvn"org.junit.platform:junit-platform-console:$platformVersion")
       )
       val classPath = (runClasspath() ++ console).map(_.path).distinct
       os.proc(
         javaHome / "bin/java",
         "-cp",
         classPath.mkString(java.io.File.pathSeparator),
-        "org.junit.platform.console.ConsoleLauncher",
+6.1.3        "org.junit.platform.console.ConsoleLauncher",
         "execute",
         "--disable-banner",
         "--fail-if-no-tests",
