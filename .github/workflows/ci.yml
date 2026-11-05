@@ -49,6 +49,11 @@ jobs:
         if: runner.os != 'Windows' && matrix.jvm == 'zulu:8'
       - run: ./mill.bat native.test.consoleTest --jvm ${{ matrix.jvm }}
         if: runner.os == 'Windows' && matrix.jvm == 'zulu:8'
+      # Mill pipes the output of tests, so these never see a terminal: check the terminal size
+      # from a main class, run under a pseudo-terminal
+      - name: Check terminal size under a pty
+        if: runner.os == 'Linux' && matrix.jvm != 'zulu:8'
+        run: script -qec "stty cols 120 rows 40 && ./mill --no-daemon native.test.runMain io.github.alexarchambault.nativeterm.TtyCheck 120 40" /dev/null
 
   release:
     runs-on: ubuntu-latest
