@@ -212,6 +212,16 @@ Mill's test runner requires Java 11 or later. To run the tests on Java 8, use
 $ ./mill native.test.consoleTest --jvm zulu:8
 ```
 
+To check that native-terminal works from GraalVM native images, build a native image of a small
+test app, and run it from a terminal, like
+```text
+$ ./mill native.test.ttyCheckNativeImage --graalvm graalvm-community:25
+$ out/native/test/ttyCheckNativeImage.dest/tty-check
+```
+
+Up to GraalVM 24, pass `-H:+UnlockExperimentalVMOptions -H:+ForeignAPISupport` after the GraalVM
+id, for the FFM classes to work.
+
 The published version is computed from git tags. Pushing a `v*` tag (like `v0.0.10`) makes the CI
 publish that version to Maven Central. Pushes to `main` publish snapshots.
 

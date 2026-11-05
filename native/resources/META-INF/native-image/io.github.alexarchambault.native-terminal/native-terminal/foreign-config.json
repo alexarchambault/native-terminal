@@ -1,0 +1,18 @@
+{
+  "downcalls": [
+    {
+      "descriptor": "(jint, jlong, void*)jint",
+      "options": { "firstVariadicArg": 2, "captureCallState": true }
+    },
+    { "descriptor": "(jint)void*" },
+    { "descriptor": "(jint, void*, jint, jint, void*, jint, void*)jint" },
+    {
+      "descriptor": "(void*, jint)jint",
+      "options": { "captureCallState": true }
+    },
+    {
+      "descriptor": "(void*, void*)jint",
+      "options": { "captureCallState": true }
+    }
+  ]
+}

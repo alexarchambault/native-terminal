@@ -157,6 +157,10 @@ object native extends JavaModule with NativeTerminalPublishModule {
 
   object test extends JavaTests with TestModule.Junit5 {
     def jupiterVersion = "5.14.4"
+    def mvnDeps = super.mvnDeps() ++ Seq(
+      // to read the native image metadata in NativeImageMetadataTests (Jackson 2.x supports Java 8)
+      mvn"com.fasterxml.jackson.core:jackson-databind:2.22.4"
+    )
 
     /** JVM to run the tests with, as a coursier JVM id (e.g. 'zulu:11') or a Java home path.
       *
@@ -218,6 +222,30 @@ object native extends JavaModule with NativeTerminalPublishModule {
         compile().classes.path.toString
       ).call(stdin = os.Inherit, stdout = os.Inherit, stderr = os.Inherit)
       ()
+    }
+
+    /** Builds a native image of TtyCheck, with the GraalVM with the passed id or path (see
+      * testJvm), and the passed native-image options.
+      *
+      * The image is written at 'tty-check' (or 'tty-check.exe' on Windows) in the 'dest'
+      * directory of this command. Like TtyCheck itself, it needs to be run from a terminal.
+      */
+    def ttyCheckNativeImage(graalvm: String, options: String*) = Task.Command {
+      val javaHome = resolveJvm(graalvm, Task.ctx(), coursierCacheCustomizer())
+      val nativeImage =
+        if (Properties.isWin) javaHome / "bin/native-image.cmd"
+        else javaHome / "bin/native-image"
+      val dest = Task.dest / "tty-check"
+      os.proc(
+        nativeImage,
+        options,
+        "-cp",
+        runClasspath().map(_.path).mkString(java.io.File.pathSeparator),
+        "-o",
+        dest,
+        "io.github.alexarchambault.nativeterm.TtyCheck"
+      ).call(cwd = Task.dest, stdin = os.Inherit, stdout = os.Inherit, stderr = os.Inherit)
+      PathRef(if (Properties.isWin) Task.dest / "tty-check.exe" else dest)
     }
 
     // Run the tests against the native-terminal JAR rather than its class directory, so that

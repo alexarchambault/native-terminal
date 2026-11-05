@@ -152,6 +152,9 @@ final class Kernel32 {
     static final java.lang.foreign.ValueLayout.OfInt C_INT$LAYOUT = java.lang.foreign.ValueLayout.JAVA_INT;
     static final java.lang.foreign.AddressLayout C_POINTER$LAYOUT = java.lang.foreign.ValueLayout.ADDRESS;
 
+    // Each downcall here needs matching entries in this module's reachability-metadata.json
+    // (GraalVM >= 25) and foreign-config.json (GraalVM 22 - 24),
+    // for native images
     static final MethodHandle GetStdHandle$MH =
             downcallHandle("GetStdHandle", java.lang.foreign.FunctionDescriptor.of(C_POINTER$LAYOUT, C_INT$LAYOUT));
     static final MethodHandle FormatMessageW$MH = downcallHandle(
