@@ -55,6 +55,36 @@ jobs:
         if: runner.os == 'Linux' && matrix.jvm != 'zulu:8'
         run: script -qec "stty cols 120 rows 40 && ./mill --no-daemon native.test.runMain io.github.alexarchambault.nativeterm.TtyCheck 120 40" /dev/null
 
+  # Checks that the FFM downcalls are registered for native images (in the
+  # META-INF/native-image resources of native-terminal), by building and running a native image
+  # of TtyCheck. Downcalls that aren't registered there only fail when the image runs.
+  native-image:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # reads the downcalls from reachability-metadata.json
+          - graalvm: "graalvm-community:25"
+          # FFM support is experimental up to GraalVM 24, and reads the downcalls from
+          # foreign-config.json there
+          - graalvm: "graalvm-community:24"
+            options: "-H:+UnlockExperimentalVMOptions -H:+ForeignAPISupport"
+          - graalvm: "graalvm-community:22"
+            options: "-H:+UnlockExperimentalVMOptions -H:+ForeignAPISupport"
+          # picks the jline-native-based classes rather than the FFM ones
+          - graalvm: "graalvm-community:21"
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: coursier/setup-action@v3
+        with:
+          jvm: "24"
+      - run: ./mill native.test.ttyCheckNativeImage --graalvm ${{ matrix.graalvm }} ${{ matrix.options }}
+      - name: Check terminal size from the native image, under a pty
+        run: script -qec "stty cols 120 rows 40 && out/native/test/ttyCheckNativeImage.dest/tty-check 120 40" /dev/null
+
   release:
     runs-on: ubuntu-latest
     if: github.event_name == 'push'
