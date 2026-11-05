@@ -70,6 +70,10 @@ class CLibrary {
 
     // Initialized lazily, so that failures surface as IOException at call time,
     // rather than as ExceptionInInitializerError / NoClassDefFoundError
+    //
+    // Each downcall here needs matching entries in this module's reachability-metadata.json
+    // (GraalVM >= 25) and foreign-config.json (GraalVM 22 - 24),
+    // for native images
     private static final class Ioctl {
         static final StructLayout CAPTURE_STATE_LAYOUT;
         static final long ERRNO_OFFSET;
