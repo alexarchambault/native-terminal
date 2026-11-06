@@ -257,16 +257,6 @@ object native extends JavaModule with NativeTerminalPublishModule {
   }
 }
 
-object `native-no-ffm` extends JavaModule with NativeTerminalPublishModule {
-  def artifactName = Task {
-    native.artifactName() + "-no-ffm"
-  }
-  def mimaFirstVersion = "0.0.9.1"
-  def mvnDeps          = native.mvnDeps
-
-  def sources = native.sources
-}
-
 object `native-graalvm` extends JavaModule with NativeTerminalPublishModule {
   def moduleDeps       = Seq(native)
   def artifactName     = "native-terminal-graalvm"
@@ -286,11 +276,4 @@ object `native-graalvm` extends JavaModule with NativeTerminalPublishModule {
       "io.github.alexarchambault.windowsansi.Placeholder"
     )
   )
-}
-
-// Empty legacy artifact (no sources), still published for compatibility with
-// projects that depend on it
-object fallbacks extends JavaModule with NativeTerminalPublishModule {
-  def artifactName     = "native-terminal-fallbacks"
-  def mimaFirstVersion = "0.0.7"
 }
