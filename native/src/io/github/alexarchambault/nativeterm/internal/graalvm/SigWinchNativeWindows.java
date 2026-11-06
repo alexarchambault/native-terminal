@@ -1,4 +1,4 @@
-package io.github.alexarchambault.nativeterm.internal;
+package io.github.alexarchambault.nativeterm.internal.graalvm;
 
 import com.oracle.svm.core.annotate.Substitute;
 import com.oracle.svm.core.annotate.TargetClass;

@@ -162,19 +162,6 @@ if native access isn't enabled.
 *native-terminal* works from GraalVM native images out of the box: its JAR, like the jline-native one,
 ships the native image configuration it needs (under `META-INF/native-image`).
 
-When building native images for Windows, also add `native-terminal-graalvm` to the class path of
-`native-image`:
-```scala
-libraryDependencies += "io.github.alexarchambault.native-terminal" % "native-terminal-graalvm" % "0.0.9.1"
-```
-
-It substitutes the code watching terminal size changes (relying on `sun.misc.Signal`) with no-ops on
-Windows, so that this code doesn't get in the way of native image generation there. Since
-`TerminalSizeCache` doesn't rely on that code on Windows anyway, this has no visible effect.
-
-Note that, unlike `native-terminal`, this module is only licensed under the GNU GPL version 2 license
-with the Classpath Exception (see [License](#license)).
-
 ## Development
 
 *native-terminal* is built with [Mill](https://mill-build.org). The `./mill` launcher at the root

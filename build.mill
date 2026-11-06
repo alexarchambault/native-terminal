@@ -134,6 +134,11 @@ object native extends JavaModule with NativeTerminalPublishModule {
     // jline-native 4.x requires Java 11 (see .scala-steward.conf)
     mvn"org.jline:jline-native:3.30.17"
   )
+  // Provides org.graalvm.nativeimage.* and com.oracle.svm.core.annotate.*, for
+  // SigWinchNativeWindows (only used when building native images)
+  def compileMvnDeps = Seq(
+    mvn"org.graalvm.sdk:nativeimage:25.0.5.0.3"
+  )
 
   def jdk22ClassesResources = Task {
     val destDir = Task.dest / "META-INF/versions/22"
@@ -255,25 +260,4 @@ object native extends JavaModule with NativeTerminalPublishModule {
       super.runClasspath().filterNot(nativeLocalCp) ++ Seq(native.jar())
     }
   }
-}
-
-object `native-graalvm` extends JavaModule with NativeTerminalPublishModule {
-  def moduleDeps       = Seq(native)
-  def artifactName     = "native-terminal-graalvm"
-  def mimaFirstVersion = "0.0.7"
-  def pomSettings = super.pomSettings().copy(
-    licenses = Seq(License.`GPL-2.0-with-classpath-exception`)
-  )
-  // Provides org.graalvm.nativeimage.* and com.oracle.svm.core.annotate.*
-  def compileMvnDeps = Seq(
-    mvn"org.graalvm.sdk:nativeimage:25.0.5.0.3"
-  )
-  def mimaBinaryIssueFilters = super.mimaBinaryIssueFilters() ++ Seq(
-    // NativeImageFeature (package private) and Placeholder (only there for javadoc) were removed:
-    // jline-native now ships its own native-image config (in META-INF/native-image/org.jline/jline-native),
-    // which makes NativeImageFeature redundant
-    ProblemFilter.exclude[com.github.lolgab.mill.mima.MissingClassProblem](
-      "io.github.alexarchambault.windowsansi.Placeholder"
-    )
-  )
 }
