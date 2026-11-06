@@ -157,27 +157,22 @@ For an executable JAR, you can also add `Enable-Native-Access: ALL-UNNAMED` to i
 Note that from JDK 24 onwards, loading JNI libraries such as jline-native's also prints such a warning
 if native access isn't enabled.
 
-## Other modules
+## GraalVM native images
 
-### `native-terminal-no-ffm`
+*native-terminal* works from GraalVM native images out of the box: its JAR, like the jline-native one,
+ships the native image configuration it needs (under `META-INF/native-image`).
 
-`native-terminal-no-ffm` has the same API as `native-terminal`, but isn't a multi-release JAR:
-it always relies on jline-native (via JNI), whatever the JDK version. Use it instead of `native-terminal`
-if you'd rather not have the [FFM-based implementation](#jdk-22-and-later) be picked on JDK 22 and later.
-```scala
-libraryDependencies += "io.github.alexarchambault.native-terminal" % "native-terminal-no-ffm" % "0.0.9.1"
-```
-
-### `native-terminal-graalvm`
-
-`native-terminal-graalvm` provides a GraalVM native image `Feature`, that registers the jline-native classes
-for JNI access, and embeds the jline-native library of the target platform in the image. It's annotated
-with `@AutomaticFeature`, so that adding this module to the class path of `native-image` is enough to enable it.
+When building native images for Windows, also add `native-terminal-graalvm` to the class path of
+`native-image`:
 ```scala
 libraryDependencies += "io.github.alexarchambault.native-terminal" % "native-terminal-graalvm" % "0.0.9.1"
 ```
 
-Note that, unlike the other modules, this module is only licensed under the GNU GPL version 2 license
+It substitutes the code watching terminal size changes (relying on `sun.misc.Signal`) with no-ops on
+Windows, so that this code doesn't get in the way of native image generation there. Since
+`TerminalSizeCache` doesn't rely on that code on Windows anyway, this has no visible effect.
+
+Note that, unlike `native-terminal`, this module is only licensed under the GNU GPL version 2 license
 with the Classpath Exception (see [License](#license)).
 
 ## Development
