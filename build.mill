@@ -160,7 +160,7 @@ object native extends JavaModule with NativeTerminalPublishModule {
     def moduleDeps = Seq(native)
   }
 
-  object test extends JavaTests with TestModule.Junit5 {
+1.14.4  object test extends JavaTests with TestModule.Junit5 {
     def jupiterVersion = "5.14.4"
     def mvnDeps = super.mvnDeps() ++ Seq(
       // to read the native image metadata in NativeImageMetadataTests (Jackson 2.x supports Java 8)
@@ -210,16 +210,16 @@ object native extends JavaModule with NativeTerminalPublishModule {
     def consoleTest(jvm: String) = Task.Command {
       val javaHome = resolveJvm(jvm, Task.ctx(), coursierCacheCustomizer())
       // JUnit Platform 1.x versions go along JUnit Jupiter 5.x ones
-      val platformVersion = "1." + jupiterVersion().stripPrefix("5.")
+1.14.4      val platformVersion = "1." + jupiterVersion().stripPrefix("5.")
       val console = defaultResolver().classpath(
-        Seq(mvn"org.junit.platform:junit-platform-console:$platformVersion")
+1.14.4        Seq(mvn"org.junit.platform:junit-platform-console:$platformVersion")
       )
       val classPath = (runClasspath() ++ console).map(_.path).distinct
       os.proc(
         javaHome / "bin/java",
         "-cp",
         classPath.mkString(java.io.File.pathSeparator),
-        "org.junit.platform.console.ConsoleLauncher",
+1.14.4        "org.junit.platform.console.ConsoleLauncher",
         "execute",
         "--disable-banner",
         "--fail-if-no-tests",
