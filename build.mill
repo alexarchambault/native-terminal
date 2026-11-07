@@ -137,7 +137,7 @@ object native extends JavaModule with NativeTerminalPublishModule {
   // Provides org.graalvm.nativeimage.* and com.oracle.svm.core.annotate.*, for
   // SigWinchNativeWindows (only used when building native images)
   def compileMvnDeps = Seq(
-    mvn"org.graalvm.sdk:nativeimage:25.0.5.0.3"
+    mvn"org.graalvm.sdk:nativeimage:25.5.5.0.3"
   )
 
   def jdk22ClassesResources = Task {
