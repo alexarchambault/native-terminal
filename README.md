@@ -90,7 +90,7 @@ The size is queried for the standard output of the current process. If it isn't 
 can be 0 × 0 rather than an exception being thrown. Check for a non-positive width or height if your
 application can run with its output redirected.
 
-If you call this method often, on Linux / macOS, you might want to use `TerminalSizeCache` instead.
+If you call this method often, you might want to use `TerminalSizeCache` instead.
 
 ```java
 import io.github.alexarchambault.nativeterm.TerminalSize;
@@ -110,8 +110,9 @@ changes, or if it's not cached yet (or the cached value has been invalidated).
 If the terminal size didn't change, the cached value is returned, and no unnecessary system call
 querying the terminal size is made.
 
-On Windows, this class just calls `NativeTerminal.getSize()` upon every call to
-`TerminalSizeCache#getSize()`.
+Windows has no WINCH signal. There, `TerminalSizeCache` starts a daemon thread that polls the terminal
+size (every 250 ms by default; set the `native-terminal.windows.size-poll-interval` Java property to
+change that, in milliseconds), and invalidates the cached terminal size when it changes.
 
 If the WINCH signal handler can't be set up (if the WINCH signal is already used by the JVM, for example),
 the cached size is never invalidated. Errors setting up the handler are ignored by default. Pass a callback

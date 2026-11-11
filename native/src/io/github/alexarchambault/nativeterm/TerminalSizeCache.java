@@ -8,14 +8,15 @@ import java.util.function.Consumer;
 /**
  * Helper caching the terminal size, and re-querying it only if a SIGWINCH has been received
  *
- * <p>On Windows, this doesn't cache anything and just re-queries the terminal size upon
- * every {@link #getSize()} call.
+ * <p>Windows has no SIGWINCH. There, the terminal size is polled from a daemon thread,
+ * and the cached value is invalidated when a change is detected.
  */
 public final class TerminalSizeCache {
     /**
      * Create a new TerminalSizeCache
      *
-     * <p>This sets up a signal handler for the WINCH signal.
+     * <p>This sets up a signal handler for the WINCH signal (or, on Windows, starts a daemon
+     * thread polling the terminal size, if one wasn't started already).
      *
      * <p>As much as possible, only create a single instance of this class,
      * and re-use it through your application.
@@ -35,7 +36,8 @@ public final class TerminalSizeCache {
     /**
      * Create a new TerminalSizeCache
      *
-     * <p>This sets up a signal handler for the WINCH signal.
+     * <p>This sets up a signal handler for the WINCH signal (or, on Windows, starts a daemon
+     * thread polling the terminal size, if one wasn't started already).
      *
      * <p>If that handler can't be set up (the WINCH signal isn't supported by the current JVM,
      * or it's already used by the JVM), {@code onError} is called with the exception that was thrown.
@@ -72,9 +74,6 @@ public final class TerminalSizeCache {
      * @return the terminal size
      */
     public TerminalSize getSize() throws IOException {
-        if (NativeTerminal.isWindows)
-            return NativeTerminal.getSize();
-
         TerminalSize terminalSize0 = terminalSize;
         if (terminalSize0 == null)
             terminalSize0 = update();
