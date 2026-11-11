@@ -60,7 +60,7 @@ public final class WindowsSizeWatcher {
      *
      * @param runnable A Runnable, run from the polling thread every time a terminal size change is detected
      */
-    static void addHandler(Runnable runnable) {
+    public static void addHandler(Runnable runnable) {
         instance().add(runnable);
     }
 

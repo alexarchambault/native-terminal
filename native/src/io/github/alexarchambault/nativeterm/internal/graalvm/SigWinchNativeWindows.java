@@ -1,6 +1,7 @@
 package io.github.alexarchambault.nativeterm.internal.graalvm;
 
 import com.oracle.svm.core.annotate.Substitute;
+import io.github.alexarchambault.nativeterm.internal.WindowsSizeWatcher;
 import com.oracle.svm.core.annotate.TargetClass;
 import org.graalvm.nativeimage.Platform;
 import org.graalvm.nativeimage.Platforms;
