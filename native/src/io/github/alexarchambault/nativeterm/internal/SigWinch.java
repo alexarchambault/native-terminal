@@ -8,6 +8,9 @@ import java.util.function.Consumer;
 
 /**
  * Helper to register handlers of the WINCH signal (terminal size change)
+ *
+ * <p>Windows has no WINCH signal. There, the terminal size is polled from a daemon thread
+ * instead, and handlers are run when it changes (see {@link WindowsSizeWatcher}).
  */
 public final class SigWinch {
     private SigWinch() {}
@@ -34,12 +37,14 @@ public final class SigWinch {
      * <p>Handlers registered earlier (by this class or by other libraries) are kept, and
      * run after the new one.
      *
-     * <p>This is a no-op on Windows. If the WINCH signal can't be handled on other platforms
+     * <p>On Windows, {@code runnable} is run every time a terminal size change is detected,
+     * and {@code onError} is never called. If the WINCH signal can't be handled on other platforms
      * (it's not supported by the current JVM, or it's already used by the JVM), no handler is
      * registered, and the exception thrown when trying to register one is passed to
      * {@code onError}.
      *
-     * @param runnable A Runnable, run every time a WINCH signal is received
+     * @param runnable A Runnable, run every time a WINCH signal is received (or, on Windows,
+     *                 every time a terminal size change is detected)
      * @param onError Called with the exception thrown if the handler can't be registered
      */
     public static void addHandler(Runnable runnable, Consumer<Throwable> onError) {
@@ -48,7 +53,12 @@ public final class SigWinch {
                 .toLowerCase(Locale.ROOT)
                 .contains("windows");
         if (isWindows)
-            return;
+            WindowsSizeWatcher.addHandler(runnable);
+        else
+            addSignalHandler(runnable, onError);
+    }
+
+    private static void addSignalHandler(Runnable runnable, Consumer<Throwable> onError) {
 
         Signal signal;
         try {
