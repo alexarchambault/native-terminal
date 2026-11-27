@@ -161,7 +161,7 @@ object native extends JavaModule with NativeTerminalPublishModule {
   }
 
   object test extends JavaTests with TestModule.Junit5 {
-    def jupiterVersion = "5.14.4"
+    def jupiterVersion = "5.14.5"
     def mvnDeps = super.mvnDeps() ++ Seq(
       // to read the native image metadata in NativeImageMetadataTests (Jackson 2.x supports Java 8)
       mvn"com.fasterxml.jackson.core:jackson-databind:2.23.0"
